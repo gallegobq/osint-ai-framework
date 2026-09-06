@@ -1,0 +1,6 @@
+FROM ollama/ollama:latest
+
+COPY scripts/ollama-entrypoint.sh /usr/local/bin/ollama-entrypoint.sh
+RUN chmod 0755 /usr/local/bin/ollama-entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/ollama-entrypoint.sh"]

@@ -1,0 +1,229 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-osint}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-osint_db}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-.env}
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_URL: http://ollama:11434
+    ports:
+      - "127.0.0.1:${PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/ready', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    command:
+      - celery
+      - --app=app.workers.celery_app:celery_app
+      - worker
+      - --loglevel=INFO
+    env_file:
+      - ${ENV_FILE:-.env}
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_URL: http://ollama:11434
+      SOC_SANDBOX_ENABLED: ${SOC_SANDBOX_ENABLED:-true}
+      SOC_SANDBOX_URL: http://sandbox:8090
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      sandbox:
+        condition: service_healthy
+    networks:
+      - default
+      - sandbox_egress
+
+  sandbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.sandbox
+    restart: unless-stopped
+    expose:
+      - "8090"
+    environment:
+      SANDBOX_SOCKET_TIMEOUT_SECONDS: ${SOC_SANDBOX_TIMEOUT_SECONDS:-10}
+    networks:
+      - sandbox_egress
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.50
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  scheduler:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    command:
+      - celery
+      - --app=app.workers.celery_app:celery_app
+      - beat
+      - --loglevel=INFO
+      - --schedule=/tmp/celerybeat-schedule
+    env_file:
+      - ${ENV_FILE:-.env}
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_URL: http://ollama:11434
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      RAG_EMBEDDING_MODEL: ${RAG_EMBEDDING_MODEL:-nomic-embed-text}
+    volumes:
+      - ollama_data:/root/.ollama
+    expose:
+      - "11434"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - OLLAMA_HOST=http://127.0.0.1:11434 ollama show "$${OLLAMA_MODEL}" >/dev/null 2>&1 && OLLAMA_HOST=http://127.0.0.1:11434 ollama show "$${RAG_EMBEDDING_MODEL}" >/dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 180
+      start_period: 10s
+
+  pgadmin:
+    image: dpage/pgadmin4
+    profiles: ["tools"]
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "127.0.0.1:5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["production"]
+    restart: unless-stopped
+    environment:
+      SHARE_HOST: ${SHARE_HOST:-localhost}
+    ports:
+      - "${TLS_PORT:-8443}:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+  tests:
+    build:
+      context: .
+      target: test
+    profiles: ["test"]
+    env_file:
+      - ${ENV_FILE:-.env}
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      SMOKE_BASE_URL: http://api:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  sandbox_egress:

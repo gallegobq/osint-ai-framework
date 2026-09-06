@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Espacio de trabajo OSINT local y privado." />
+    <title>Linterna — OSINT local</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+
+    <main id="login-view" class="login-layout">
+      <section class="login-story" aria-labelledby="product-title">
+        <a class="brand brand-light" href="/" aria-label="Linterna, inicio">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>Linterna</span>
+        </a>
+        <div class="story-copy">
+          <p class="eyebrow">Inteligencia de fuentes abiertas</p>
+          <h1 id="product-title">Investiga con método.<br />Conserva el contexto.</h1>
+          <p class="lede">
+            Un espacio privado para organizar hallazgos, documentar evidencia y
+            convertir señales dispersas en investigaciones trazables.
+          </p>
+        </div>
+        <div class="local-note">
+          <span class="pulse" aria-hidden="true"></span>
+          <div><strong>Instancia local</strong><span>Tus datos permanecen en este equipo.</span></div>
+        </div>
+      </section>
+
+      <section class="login-panel" aria-labelledby="login-title">
+        <form id="login-form" class="login-card">
+          <div>
+            <p class="section-kicker">Acceso seguro</p>
+            <h2 id="login-title">Bienvenido</h2>
+            <p class="muted">Entra con el administrador configurado en tu archivo local.</p>
+          </div>
+          <label>
+            Usuario
+            <input id="username" name="username" autocomplete="username" value="admin" required />
+          </label>
+          <label>
+            Contraseña
+            <input id="password" name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <label>
+            Código MFA <small>(si está activado)</small>
+            <input id="mfa-code" name="mfa-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" />
+          </label>
+          <p id="login-error" class="form-error" role="alert" hidden></p>
+          <button class="button button-primary" type="submit">
+            <span>Entrar al espacio</span><span aria-hidden="true">→</span>
+          </button>
+          <p class="login-help"><span aria-hidden="true">●</span> API disponible en el puerto local 8000</p>
+        </form>
+      </section>
+    </main>
+
+    <div id="workspace-view" class="workspace" hidden>
+      <aside class="sidebar">
+        <a class="brand" href="/" aria-label="Linterna, inicio">
+          <span class="brand-mark" aria-hidden="true"></span><span>Linterna</span>
+        </a>
+        <nav class="main-nav" aria-label="Navegación principal">
+          <button class="nav-item active" data-view="dashboard" type="button"><span aria-hidden="true">⌂</span>Resumen</button>
+          <button class="nav-item" data-view="projects" type="button"><span aria-hidden="true">□</span>Proyectos</button>
+          <button class="nav-item" data-view="investigations" type="button"><span aria-hidden="true">◎</span>Investigaciones</button>
+          <button class="nav-item" data-view="knowledge" type="button"><span aria-hidden="true">✦</span>Linterna SOC</button>
+        </nav>
+        <div class="sidebar-foot">
+          <div class="privacy-card"><span class="pulse"></span><div><strong>Solo local</strong><span>Conexión privada</span></div></div>
+          <button id="logout-button" class="nav-item" type="button"><span aria-hidden="true">↪</span>Cerrar sesión</button>
+        </div>
+      </aside>
+      <section class="main-column">
+        <header class="topbar">
+          <div><p id="breadcrumb" class="breadcrumb">Espacio de trabajo /</p><h1 id="view-title">Panel de investigación</h1></div>
+          <div class="user-chip"><span id="user-initial">A</span><div><strong id="user-name">admin</strong><small>Administrador</small></div></div>
+        </header>
+        <div id="app-content" class="content" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <dialog id="project-dialog" class="modal">
+      <form id="project-form" class="modal-card">
+        <header><div><p class="section-kicker">Nuevo espacio</p><h2>Crear proyecto</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Cerrar">×</button></header>
+        <label>Nombre<input id="project-name" maxlength="120" required placeholder="Ej. Huella digital regional" /></label>
+        <label>Identificador<input id="project-slug" maxlength="120" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required placeholder="huella-digital-regional" /><small>Minúsculas, números y guiones.</small></label>
+        <label>Descripción<textarea id="project-description" maxlength="5000" rows="4" placeholder="Objetivo y alcance autorizado del proyecto"></textarea></label>
+        <p class="dialog-error form-error" role="alert" hidden></p>
+        <footer><button class="button button-quiet" type="button" data-close-dialog>Cancelar</button><button class="button button-primary" type="submit">Crear proyecto <span>→</span></button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="investigation-dialog" class="modal">
+      <form id="investigation-form" class="modal-card modal-wide">
+        <header><div><p class="section-kicker">Nueva investigación</p><h2>Definir el caso</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Cerrar">×</button></header>
+        <label>Proyecto<select id="investigation-project-id" required></select></label>
+        <label>Título<input id="investigation-title" maxlength="200" required placeholder="Ej. Infraestructura asociada al dominio" /></label>
+        <label>Modo operativo<select id="investigation-operation-mode"><option value="attack_surface" selected>Superficie de ataque</option><option value="incident_response">Respuesta a incidentes</option><option value="pentest">Pentesting autorizado</option></select><small id="investigation-mode-help">Descubrimiento y seguimiento pasivo de activos expuestos.</small></label>
+        <div class="form-row"><label>Tipo<select id="investigation-kind"><option value="domain">Dominio</option><option value="company">Empresa</option><option value="person">Persona</option><option value="mixed" selected>Mixta</option></select></label><label>Prioridad<select id="investigation-priority"><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></label></div>
+        <label>Descripción<textarea id="investigation-description" maxlength="10000" rows="4" placeholder="Hipótesis, límites y preguntas de investigación"></textarea></label>
+        <div class="form-row"><label>Jurisdicción<input id="investigation-jurisdiction" maxlength="100" placeholder="Ej. Colombia" /></label><label>Clasificación<select id="investigation-data-classification"><option value="public">Pública</option><option value="internal" selected>Interna</option><option value="confidential">Confidencial</option><option value="restricted">Restringida</option></select></label></div>
+        <label>Base legal<textarea id="investigation-legal-basis" maxlength="5000" rows="2" placeholder="Autorización, interés legítimo, respuesta a incidente u otra base aprobada"></textarea><small>La política corporativa puede hacer obligatorios estos datos.</small></label>
+        <section id="pentest-policy-fields" class="pentest-policy" hidden>
+          <div><p class="section-kicker">Reglas de engagement</p><strong>El modo activo exige autorización verificable</strong></div>
+          <label>Alcance y referencia de autorización<textarea id="investigation-authorization-scope" maxlength="5000" rows="4" placeholder="Sistemas dentro y fuera de alcance, propietario que autoriza, referencia documental y restricciones"></textarea><small>Mínimo 20 caracteres. No incluyas secretos ni credenciales.</small></label>
+          <div class="form-row"><label>Inicio<input id="investigation-engagement-start" type="datetime-local" /></label><label>Fin<input id="investigation-engagement-end" type="datetime-local" /></label></div>
+          <label class="check-label"><input id="investigation-active-authorized" type="checkbox" /><span>Confirmo que existe autorización explícita para pruebas activas dentro del alcance y la ventana indicados.</span></label>
+        </section>
+        <p class="dialog-error form-error" role="alert" hidden></p>
+        <footer><button class="button button-quiet" type="button" data-close-dialog>Cancelar</button><button class="button button-primary" type="submit">Crear investigación <span>→</span></button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="evidence-dialog" class="modal">
+      <form id="evidence-form" class="modal-card modal-wide">
+        <header><div><p class="section-kicker">Registro trazable</p><h2>Añadir evidencia</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Cerrar">×</button></header>
+        <input id="evidence-investigation-id" type="hidden" />
+        <div class="form-row"><label>Título<input id="evidence-title" maxlength="255" required placeholder="Hallazgo verificable" /></label><label>Tipo<input id="evidence-kind" maxlength="50" required value="note" placeholder="note, domain, profile…" /></label></div>
+        <div class="form-row"><label>Recolector<input id="evidence-collector" maxlength="50" required value="manual" /></label><label>Tipo de fuente<input id="evidence-source-type" maxlength="50" required value="web" /></label></div>
+        <label>Localizador o URL<input id="evidence-locator" maxlength="2048" required placeholder="https://fuente.example/hallazgo" /></label>
+        <label>Contenido<textarea id="evidence-content" maxlength="1000000" rows="7" required placeholder="Contenido observado, contexto y notas de verificación"></textarea></label>
+        <p class="dialog-error form-error" role="alert" hidden></p>
+        <footer><button class="button button-quiet" type="button" data-close-dialog>Cancelar</button><button class="button button-primary" type="submit">Guardar evidencia <span>→</span></button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="search-dialog" class="modal">
+      <form id="search-form" class="modal-card modal-wide">
+        <header><div><p class="section-kicker">Recolección responsable</p><h2>Iniciar búsqueda OSINT</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Cerrar">×</button></header>
+        <input id="search-investigation-id" type="hidden" />
+        <div id="search-mode-note" class="mode-note"></div>
+        <label>Objetivo<textarea id="search-objective" minlength="5" maxlength="2000" rows="3" required placeholder="Qué necesitas confirmar o descartar"></textarea></label>
+        <div class="form-row target-row"><label>Objetivo explícito (opcional)<select id="search-target-type"><option value="" selected>Detectar automáticamente</option><option value="domain">Dominio</option><option value="hostname">Hostname</option><option value="ip">IP</option><option value="asn">ASN</option><option value="url">URL</option><option value="email">Correo</option><option value="hash">Hash MD5/SHA</option><option value="cve">CVE</option><option value="username">Usuario</option><option value="keyword">Palabra clave</option></select><small>La detección automática reconoce dominio, hostname en URL, IP, ASN, correo, CVE, hash, URL y @usuario.</small></label><label>Valor opcional<input id="search-target-value" maxlength="2048" placeholder="Ej. CVE-2021-44228" /></label></div>
+        <label>Nota de alcance<textarea id="search-scope-note" maxlength="1000" rows="2" placeholder="Base legal, autorización o límites aplicables"></textarea></label>
+        <label id="search-active-panel" class="check-label active-check" hidden><input id="search-allow-active" type="checkbox" /><span>Permitir colectores activos autorizados para este pentest. El servidor volverá a comprobar alcance y ventana antes de ejecutar.</span></label>
+        <label class="check-label"><input id="search-scheduled" type="checkbox" /><span>Repetir esta búsqueda de forma pasiva para detectar cambios. Requiere un objetivo explícito y nunca ejecuta colectores activos.</span></label>
+        <section id="search-schedule-fields" class="pentest-policy" hidden>
+          <label>Nombre de la programación<input id="search-schedule-name" maxlength="200" required placeholder="Vigilancia diaria del IOC" /></label>
+          <label>Frecuencia<select id="search-schedule-interval"><option value="60">Cada hora</option><option value="360">Cada 6 horas</option><option value="1440" selected>Diaria</option><option value="10080">Semanal</option></select></label>
+        </section>
+        <label class="check-label"><input id="search-authorization" type="checkbox" required /><span>Confirmo que tengo autorización para investigar estos objetivos y que respetaré los términos de las fuentes.</span></label>
+        <p class="dialog-error form-error" role="alert" hidden></p>
+        <footer><button class="button button-quiet" type="button" data-close-dialog>Cancelar</button><button class="button button-primary" type="submit">Iniciar búsqueda <span>→</span></button></footer>
+      </form>
+    </dialog>
+
+    <dialog id="finding-dialog" class="modal">
+      <form id="finding-form" class="modal-card modal-wide">
+        <header><div><p class="section-kicker">Operación SOC</p><h2>Crear hallazgo</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Cerrar">×</button></header>
+        <input id="finding-investigation-id" type="hidden" />
+        <label>Título<input id="finding-title" maxlength="255" required placeholder="Exposición o riesgo confirmado" /></label>
+        <div class="form-row"><label>Severidad<select id="finding-severity"><option value="informational">Informativa</option><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></label><label>Confianza<input id="finding-confidence" type="number" min="0" max="1" step="0.05" value="0.75" required /></label></div>
+        <label>Descripción<textarea id="finding-description" maxlength="20000" minlength="3" rows="5" required placeholder="Qué se observó, por qué importa y cómo se verificó"></textarea></label>
+        <label>Remediación<textarea id="finding-remediation" maxlength="20000" rows="3" placeholder="Acción recomendada y criterio de cierre"></textarea></label>
+        <p class="dialog-error form-error" role="alert" hidden></p>
+        <footer><button class="button button-quiet" type="button" data-close-dialog>Cancelar</button><button class="button button-primary" type="submit">Guardar hallazgo <span>→</span></button></footer>
+      </form>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </body>
+</html>

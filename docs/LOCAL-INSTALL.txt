@@ -1,0 +1,55 @@
+LINTERNA - INSTALACION LOCAL CON DOCKER
+=======================================
+
+Requisito: Docker Desktop configurado con contenedores Linux.
+
+1. Copia estos archivos en una carpeta:
+   - docker-compose.release.yml
+   - .env.example
+   - linterna-images-2026-08-31.tar
+
+2. Abre PowerShell en esa carpeta y carga las imagenes:
+
+   docker load -i .\linterna-images-2026-08-31.tar
+
+3. Crea la configuracion local:
+
+   Copy-Item .env.example .env
+
+4. Edita .env y cambia obligatoriamente:
+   POSTGRES_PASSWORD
+   SECRET_KEY
+   INITIAL_ADMIN_USERNAME
+   INITIAL_ADMIN_EMAIL
+   INITIAL_ADMIN_PASSWORD
+
+   SECRET_KEY debe tener al menos 32 caracteres.
+
+5. Inicia Linterna:
+
+   docker compose -f .\docker-compose.release.yml up -d
+
+   El primer inicio descarga los modelos de IA y puede tardar varios minutos.
+   Las descargas se conservan en un volumen local de Docker.
+
+6. Comprueba el estado:
+
+   docker compose -f .\docker-compose.release.yml ps
+
+7. Abre:
+
+   http://localhost:8000/
+
+8. Entra con INITIAL_ADMIN_USERNAME e INITIAL_ADMIN_PASSWORD.
+
+Para detener sin borrar datos:
+
+   docker compose -f .\docker-compose.release.yml stop
+
+Para volver a iniciar:
+
+   docker compose -f .\docker-compose.release.yml start
+
+ADVERTENCIA: no ejecutes "docker compose down -v" salvo que quieras eliminar
+la base de datos, los modelos descargados y todos los datos de esa instalacion.
+
