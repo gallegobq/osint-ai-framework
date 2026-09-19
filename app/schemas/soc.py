@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.orchestration import SearchTarget
 
@@ -31,7 +31,35 @@ class FindingCreate(BaseModel):
     severity: FindingSeverity = FindingSeverity.MEDIUM
     confidence: Decimal = Field(default=Decimal("0.500"), ge=0, le=1)
     remediation: str | None = Field(default=None, max_length=20000)
+    assignee_id: int | None = Field(default=None, gt=0)
+    mitre_tactics: list[str] = Field(default_factory=list, max_length=20)
+    mitre_techniques: list[str] = Field(default_factory=list, max_length=50)
+    tags: list[str] = Field(default_factory=list, max_length=30)
     due_at: datetime | None = None
+
+    @field_validator("mitre_tactics")
+    @classmethod
+    def validate_tactics(cls, values: list[str]) -> list[str]:
+        import re
+        if any(not re.fullmatch(r"TA\d{4}", value) for value in values):
+            raise ValueError("MITRE tactics must use the TA#### format.")
+        return list(dict.fromkeys(values))
+
+    @field_validator("mitre_techniques")
+    @classmethod
+    def validate_techniques(cls, values: list[str]) -> list[str]:
+        import re
+        if any(not re.fullmatch(r"T\d{4}(?:\.\d{3})?", value) for value in values):
+            raise ValueError("MITRE techniques must use T#### or T####.###.")
+        return list(dict.fromkeys(values))
+
+    @field_validator("tags")
+    @classmethod
+    def normalize_tags(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip().lower() for value in values if value.strip()]
+        if any(len(value) > 50 for value in normalized):
+            raise ValueError("Finding tags cannot exceed 50 characters.")
+        return list(dict.fromkeys(normalized))
 
 
 class FindingUpdate(BaseModel):
@@ -41,7 +69,23 @@ class FindingUpdate(BaseModel):
     status: FindingStatus | None = None
     confidence: Decimal | None = Field(default=None, ge=0, le=1)
     remediation: str | None = Field(default=None, max_length=20000)
+    assignee_id: int | None = Field(default=None, gt=0)
+    mitre_tactics: list[str] | None = Field(default=None, max_length=20)
+    mitre_techniques: list[str] | None = Field(default=None, max_length=50)
+    tags: list[str] | None = Field(default=None, max_length=30)
+    resolution_summary: str | None = Field(default=None, max_length=20000)
+    closure_reason: str | None = Field(default=None, max_length=5000)
     due_at: datetime | None = None
+
+    _validate_tactics = field_validator("mitre_tactics")(
+        FindingCreate.validate_tactics.__func__
+    )
+    _validate_techniques = field_validator("mitre_techniques")(
+        FindingCreate.validate_techniques.__func__
+    )
+    _normalize_tags = field_validator("tags")(
+        FindingCreate.normalize_tags.__func__
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -74,16 +118,36 @@ class FindingRead(BaseModel):
     investigation_id: int
     evidence_id: int | None
     created_by_id: int
+    assignee_id: int | None
     title: str
     description: str
     severity: FindingSeverity
     status: FindingStatus
     confidence: Decimal
     remediation: str | None
+    mitre_tactics: list[str]
+    mitre_techniques: list[str]
+    tags: list[str]
+    resolution_summary: str | None
+    closure_reason: str | None
     due_at: datetime | None
     resolved_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class FindingCommentCreate(BaseModel):
+    message: str = Field(min_length=1, max_length=5000)
+
+
+class FindingActivityRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    actor_user_id: int | None
+    action: str
+    event_data: dict
+    created_at: datetime
 
 
 class SearchScheduleCreate(BaseModel):

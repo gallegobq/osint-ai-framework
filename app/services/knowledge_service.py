@@ -144,9 +144,15 @@ class KnowledgeService:
         self, actor: User, project_id: int, data: RagQuery
     ) -> RagQueryResult:
         self.projects.get(actor, project_id)
-        candidates = self.chunks.list_by_project(
-            project_id, limit=settings.rag_max_chunks_per_project
+        candidates = self.chunks.list_candidates(
+            project_id,
+            data.question,
+            limit=settings.rag_candidate_limit,
         )
+        if not candidates:
+            candidates = self.chunks.list_by_project(
+                project_id, limit=settings.rag_candidate_limit
+            )
         if not candidates:
             raise BadRequestException(
                 "The project knowledge base is empty. Ingest a SOC document first."

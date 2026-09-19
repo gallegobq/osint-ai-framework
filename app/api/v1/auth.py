@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, status
+from fastapi import APIRouter, Cookie, Depends, Form, Header, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 
@@ -27,11 +27,35 @@ from app.services.auth_session_service import (
 )
 from app.schemas.mfa import MfaDisableRequest, MfaSetupResponse, MfaVerifyRequest
 from app.services.mfa_service import MfaService
+from app.core.exceptions import InvalidCredentialsException
+from app.core.settings import settings
 
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
 )
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=settings.auth_cookie_name,
+        value=token,
+        max_age=settings.refresh_token_expire_days * 86_400,
+        httponly=True,
+        secure=settings.auth_cookie_secure,
+        samesite="strict",
+        path="/api/v1/auth",
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=settings.auth_cookie_name,
+        httponly=True,
+        secure=settings.auth_cookie_secure,
+        samesite="strict",
+        path="/api/v1/auth",
+    )
 
 
 @router.post(
@@ -41,10 +65,14 @@ router = APIRouter(
 )
 def login(
     credentials: LoginRequest,
+    response: Response,
     auth_service: Annotated[
         AuthenticationService,
         Depends(get_auth_service),
     ],
+    refresh_transport: Annotated[
+        str | None, Header(alias="X-Refresh-Token-Transport")
+    ] = None,
 ) -> TokenResponse:
 
     """
@@ -55,7 +83,11 @@ def login(
     registrando una nueva sesión activa.
     """
 
-    return auth_service.login(credentials)
+    tokens = auth_service.login(credentials)
+    if refresh_transport == "cookie" and tokens.refresh_token:
+        _set_refresh_cookie(response, tokens.refresh_token)
+        return tokens.model_copy(update={"refresh_token": None})
+    return tokens
 
 
 @router.post(
@@ -93,17 +125,35 @@ def oauth2_login(
     status_code=status.HTTP_200_OK,
 )
 def refresh(
-    request: RefreshTokenRequest,
+    response: Response,
     auth_session_service: Annotated[
         AuthSessionService,
         Depends(get_auth_session_service),
     ],
+    request: RefreshTokenRequest | None = None,
+    refresh_cookie: Annotated[
+        str | None, Cookie(alias=settings.auth_cookie_name)
+    ] = None,
+    refresh_transport: Annotated[
+        str | None, Header(alias="X-Refresh-Token-Transport")
+    ] = None,
 ) -> TokenResponse:
     """
     Refresh Token Rotation.
     """
 
-    return auth_session_service.refresh(request)
+    supplied_token = request.refresh_token if request is not None else refresh_cookie
+    if not supplied_token:
+        raise InvalidCredentialsException()
+    tokens = auth_session_service.refresh(
+        RefreshTokenRequest(refresh_token=supplied_token)
+    )
+    if refresh_transport == "cookie" or request is None:
+        if not tokens.refresh_token:
+            raise InvalidCredentialsException()
+        _set_refresh_cookie(response, tokens.refresh_token)
+        return tokens.model_copy(update={"refresh_token": None})
+    return tokens
 
 
 @router.post(
@@ -111,6 +161,7 @@ def refresh(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def logout_all(
+    response: Response,
     current_user: Annotated[
         User,
         Depends(get_current_user),
@@ -127,6 +178,7 @@ def logout_all(
     auth_session_service.logout_all(
         current_user,
     )
+    _clear_refresh_cookie(response)
 
 @router.get(
     "/me",
@@ -151,6 +203,7 @@ def me(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def logout(
+    response: Response,
     current_session: Annotated[
         UserSession,
         Depends(get_current_session),
@@ -164,6 +217,7 @@ def logout(
     auth_session_service.logout(
         current_session,
     )
+    _clear_refresh_cookie(response)
 
 
 @router.get(

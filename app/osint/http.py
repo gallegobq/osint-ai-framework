@@ -1,7 +1,7 @@
 import ipaddress
 import json
 import socket
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import httpx
 
@@ -11,7 +11,7 @@ from app.core.settings import settings
 REDIRECT_STATUSES = {301, 302, 303, 307, 308}
 
 
-def _require_public_https(url: str) -> str:
+def _require_public_https(url: str) -> tuple[str, str]:
     parsed = urlsplit(url)
     if parsed.scheme != "https" or not parsed.hostname:
         raise ValueError("Collector endpoints must use absolute HTTPS URLs.")
@@ -35,7 +35,19 @@ def _require_public_https(url: str) -> str:
         not ipaddress.ip_address(address).is_global for address in addresses
     ):
         raise ValueError("Collector endpoint resolved to a non-public address.")
-    return parsed.hostname.lower()
+    host = parsed.hostname.lower()
+    # Connect to the exact address that passed validation. Keeping the
+    # original hostname in Host/SNI preserves TLS verification while closing
+    # the DNS-rebinding gap between validation and connect.
+    address = sorted(
+        addresses,
+        key=lambda value: (ipaddress.ip_address(value).version, value),
+    )[0]
+    pinned_host = f"[{address}]" if ":" in address else address
+    pinned_url = urlunsplit(
+        (parsed.scheme, pinned_host, parsed.path, parsed.query, parsed.fragment)
+    )
+    return host, pinned_url
 
 
 class SafeHttpClient:
@@ -67,7 +79,7 @@ class SafeHttpClient:
             headers=request_headers,
         ) as client:
             for redirect_count in range(4):
-                host = _require_public_https(current_url)
+                host, pinned_url = _require_public_https(current_url)
                 if host not in allowed_hosts and not (
                     allow_public_redirects and redirect_count > 0
                 ):
@@ -75,14 +87,16 @@ class SafeHttpClient:
 
                 with client.stream(
                     "GET",
-                    current_url,
+                    pinned_url,
                     params=current_params,
+                    headers={"Host": host},
+                    extensions={"sni_hostname": host},
                 ) as response:
                     if response.status_code in REDIRECT_STATUSES:
                         location = response.headers.get("location")
                         if not location or redirect_count == 3:
                             raise RuntimeError("Invalid collector endpoint redirect.")
-                        current_url = urljoin(str(response.url), location)
+                        current_url = urljoin(current_url, location)
                         current_params = None
                         continue
 

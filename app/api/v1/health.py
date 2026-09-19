@@ -30,23 +30,22 @@ def readiness(
         Depends(get_health_service),
     ],
 ):
-    ready = service.database_is_ready()
+    result = service.readiness()
 
-    if not ready:
+    if result["status"] == "not_ready":
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
-    return {
-        "status": "ready" if ready else "not_ready",
-        "database": "ok" if ready else "unavailable",
-    }
+    return result
 
 
 @router.get("/metrics", response_class=PlainTextResponse)
 def metrics(
     authorization: Annotated[str | None, Header()] = None,
 ) -> PlainTextResponse:
+    if not settings.metrics_enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     token = settings.metrics_token
-    if token is not None:
+    if token is not None and token.get_secret_value().strip():
         supplied = (authorization or "").removeprefix("Bearer ")
         if not hmac.compare_digest(supplied, token.get_secret_value()):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)

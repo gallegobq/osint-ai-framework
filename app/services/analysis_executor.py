@@ -27,12 +27,12 @@ class AnalysisExecutor:
             raise NotFoundException("Analysis job")
         if job.status == JobStatus.SUCCEEDED.value:
             return job.result or {}
-
-        job.status = JobStatus.RUNNING.value
-        job.started_at = datetime.now(timezone.utc)
-        job.completed_at = None
-        job.error = None
-        self.repository.commit()
+        if not self.repository.claim(job_id, datetime.now(timezone.utc)):
+            current = self.repository.get_by_id(job_id)
+            return (current.result or {"status": current.status, "duplicate": True})
+        job = self.repository.get_by_id(job_id)
+        if job is None:
+            raise NotFoundException("Analysis job")
 
         try:
             actor = self.users.get_by_id(job.requested_by_id)

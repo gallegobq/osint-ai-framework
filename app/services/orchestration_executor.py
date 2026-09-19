@@ -40,12 +40,12 @@ class OrchestrationExecutor:
             SearchRunStatus.PARTIAL.value,
         }:
             return run.result_summary or {}
-
-        run.status = SearchRunStatus.RUNNING.value
-        run.started_at = datetime.now(timezone.utc)
-        run.completed_at = None
-        run.error = None
-        self.repository.commit()
+        if not self.repository.claim(run_id, datetime.now(timezone.utc)):
+            current = self.repository.get_by_id(run_id)
+            return (current.result_summary or {"status": current.status, "duplicate": True})
+        run = self.repository.get_by_id(run_id)
+        if run is None:
+            raise NotFoundException("Search run")
 
         try:
             actor = self.users.get_by_id(run.requested_by_id)

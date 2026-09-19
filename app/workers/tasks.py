@@ -17,7 +17,7 @@ from app.workers.celery_app import celery_app
 from app.workers.dispatcher import CeleryJobDispatcher
 from app.core.container import build_audit_service, build_investigation_service
 from app.services.orchestration_service import OrchestrationService
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 
 @celery_app.task(
@@ -39,7 +39,13 @@ def execute_collection_job(job_id: int) -> dict:
         db.close()
 
 
-@celery_app.task(name="osint.execute_search_run")
+@celery_app.task(
+    name="osint.execute_search_run",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_jitter=True,
+    max_retries=1,
+)
 def execute_search_run(run_id: int) -> dict:
     db = SessionLocal()
     try:
@@ -85,7 +91,7 @@ def run_due_search_schedules() -> dict:
     try:
         schedules = SearchScheduleRepository(db)
         users = UserRepository(db)
-        due = schedules.list_due(now)
+        due = schedules.claim_due(now)
         orchestration = OrchestrationService(
             repository=SearchRunRepository(db),
             investigations=build_investigation_service(db),
@@ -117,9 +123,6 @@ def run_due_search_schedules() -> dict:
                 current.last_run_at = now
                 current.last_search_run_id = run.id
                 current.last_error = None
-                current.next_run_at = now + timedelta(
-                    minutes=current.interval_minutes
-                )
                 schedules.commit()
                 processed += 1
             except Exception as exc:
@@ -127,9 +130,6 @@ def run_due_search_schedules() -> dict:
                 current = schedules.get_by_id(schedule_id)
                 if current is not None:
                     current.last_error = str(exc)[:1000]
-                    current.next_run_at = now + timedelta(
-                        minutes=current.interval_minutes
-                    )
                     schedules.commit()
                 failed += 1
         return {"due": len(due), "enqueued": processed, "failed": failed}

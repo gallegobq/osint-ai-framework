@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 from datetime import datetime, timezone
 
 from app.core.exceptions import ConflictException, NotFoundException
+from app.core.settings import settings
 from app.models.evidence import Evidence, EvidenceSource, Entity, EntityRelation
 from app.models.user import User
 from app.repositories.entity_repository import (
@@ -95,6 +97,11 @@ class EvidenceService:
                 title=data.title,
                 content=data.content,
                 content_hash=content_hash,
+                integrity_signature=hmac.new(
+                    settings.secret_key.get_secret_value().encode("utf-8"),
+                    content_hash.encode("ascii"),
+                    hashlib.sha256,
+                ).hexdigest(),
                 observed_at=data.observed_at,
                 collected_at=now,
                 raw_data=data.raw_data,

@@ -27,13 +27,12 @@ class CollectionExecutor:
             raise NotFoundException("Collection job")
         if job.status == JobStatus.SUCCEEDED.value:
             return job.result_summary or {}
-
-        job.status = JobStatus.RUNNING.value
-        job.attempts += 1
-        job.started_at = datetime.now(timezone.utc)
-        job.completed_at = None
-        job.error = None
-        self.repository.commit()
+        if not self.repository.claim(job_id, datetime.now(timezone.utc)):
+            current = self.repository.get_by_id(job_id)
+            return (current.result_summary or {"status": current.status, "duplicate": True})
+        job = self.repository.get_by_id(job_id)
+        if job is None:
+            raise NotFoundException("Collection job")
 
         try:
             actor = self.users.get_by_id(job.requested_by_id)

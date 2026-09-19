@@ -34,21 +34,14 @@ do
     load_secret_file "$secret_name"
 done
 
-# Run database migrations if this is the API or scheduler service
-if [ "$1" = "uvicorn" ] || ([ -n "$1" ] && echo "$@" | grep -q "celery.*beat"); then
+if [ "$1" = "migrate" ]; then
     echo "Running database migrations..."
     python -m alembic upgrade head
-    
-    # Only run bootstrap on API startup
-    if [ "$1" = "uvicorn" ]; then
-        echo "Creating initial administrator..."
-        python -m app.seed.admin || true
-
-        # Run RBAC after the administrator exists so the first clean startup
-        # also assigns the complete Administrator role.
-        echo "Running RBAC bootstrap..."
-        python -m app.seed.rbac || true
-    fi
+    echo "Creating initial administrator..."
+    python -m app.seed.admin
+    echo "Running RBAC bootstrap..."
+    python -m app.seed.rbac
+    exit 0
 fi
 
 exec "$@"

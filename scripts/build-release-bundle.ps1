@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "2026.08.31",
+    [string]$Version = "2026.09.18",
     [string]$OutputDirectory = ".\output\distribution\linterna-local-$Version"
 )
 

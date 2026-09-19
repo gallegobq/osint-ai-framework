@@ -8,6 +8,8 @@ from app.dependencies.soc import get_soc_service
 from app.models.user import User
 from app.schemas.soc import (
     FindingCreate,
+    FindingCommentCreate,
+    FindingActivityRead,
     FindingRead,
     FindingUpdate,
     SearchScheduleCreate,
@@ -61,6 +63,42 @@ def update_finding(
     service: Annotated[SocService, Depends(get_soc_service)],
 ) -> FindingRead:
     return service.update_finding(current_user, investigation_id, finding_id, data)
+
+
+@router.get(
+    "/{investigation_id}/findings/{finding_id}/activity",
+    response_model=list[FindingActivityRead],
+)
+def list_finding_activity(
+    investigation_id: int,
+    finding_id: int,
+    current_user: Annotated[
+        User, Depends(require_permission(Permissions.Findings.READ))
+    ],
+    service: Annotated[SocService, Depends(get_soc_service)],
+) -> list[FindingActivityRead]:
+    return service.list_finding_activity(
+        current_user, investigation_id, finding_id
+    )
+
+
+@router.post(
+    "/{investigation_id}/findings/{finding_id}/comments",
+    response_model=FindingActivityRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_finding_comment(
+    investigation_id: int,
+    finding_id: int,
+    data: FindingCommentCreate,
+    current_user: Annotated[
+        User, Depends(require_permission(Permissions.Findings.UPDATE))
+    ],
+    service: Annotated[SocService, Depends(get_soc_service)],
+) -> FindingActivityRead:
+    return service.add_finding_comment(
+        current_user, investigation_id, finding_id, data
+    )
 
 
 @router.post(

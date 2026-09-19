@@ -91,9 +91,7 @@ class AuthSessionService:
         #
         # Revocar la sesión anterior
         #
-        self.session_service.revoke_session(
-            session,
-        )
+        self.session_service.revoke_session(session, commit=False)
 
         #
         # Crear nuevo Refresh Token
@@ -114,9 +112,9 @@ class AuthSessionService:
             device_name=session.device_name,
             ip_address=session.ip_address,
             user_agent=session.user_agent,
+            commit=False,
         )
-        
-        
+        self.session_service.repository.commit()
         
         return TokenResponse(
             access_token=access_token,

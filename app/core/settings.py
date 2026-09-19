@@ -114,19 +114,41 @@ class Settings(BaseSettings):
     rate_limit_fail_closed: bool = Field(
         default=True, alias="RATE_LIMIT_FAIL_CLOSED"
     )
+    trust_proxy_headers: bool = Field(
+        default=False, alias="TRUST_PROXY_HEADERS"
+    )
+    metrics_enabled: bool = Field(default=False, alias="METRICS_ENABLED")
     metrics_token: SecretStr | None = Field(
         default=None, alias="METRICS_TOKEN"
+    )
+    auth_cookie_name: str = Field(
+        default="linterna_refresh", alias="AUTH_COOKIE_NAME"
+    )
+    auth_cookie_secure: bool = Field(
+        default=False, alias="AUTH_COOKIE_SECURE"
     )
     default_retention_days: int = Field(
         default=365, alias="DEFAULT_RETENTION_DAYS", ge=1, le=3650
     )
     require_legal_metadata: bool = Field(
-        default=False, alias="REQUIRE_LEGAL_METADATA"
+        default=True, alias="REQUIRE_LEGAL_METADATA"
     )
 
     celery_task_always_eager: bool = Field(
         default=False,
         alias="CELERY_TASK_ALWAYS_EAGER",
+    )
+    celery_task_time_limit_seconds: int = Field(
+        default=300, alias="CELERY_TASK_TIME_LIMIT_SECONDS", ge=30, le=3600
+    )
+    celery_visibility_timeout_seconds: int = Field(
+        default=900,
+        alias="CELERY_VISIBILITY_TIMEOUT_SECONDS",
+        ge=60,
+        le=86_400,
+    )
+    readiness_timeout_seconds: float = Field(
+        default=1.5, alias="READINESS_TIMEOUT_SECONDS", gt=0, le=10
     )
 
     osint_http_timeout_seconds: float = Field(
@@ -226,6 +248,9 @@ class Settings(BaseSettings):
         ge=100,
         le=100_000,
     )
+    rag_candidate_limit: int = Field(
+        default=2_000, alias="RAG_CANDIDATE_LIMIT", ge=100, le=10_000
+    )
     rag_embedding_batch_size: int = Field(
         default=32, alias="RAG_EMBEDDING_BATCH_SIZE", ge=1, le=128
     )
@@ -276,6 +301,19 @@ class Settings(BaseSettings):
             raise ValueError(
                 "RAG_CHUNK_OVERLAP_CHARACTERS must be smaller than "
                 "RAG_CHUNK_CHARACTERS."
+            )
+        if self.rag_candidate_limit > self.rag_max_chunks_per_project:
+            raise ValueError(
+                "RAG_CANDIDATE_LIMIT cannot exceed RAG_MAX_CHUNKS_PER_PROJECT."
+            )
+        metrics_token = (
+            self.metrics_token.get_secret_value().strip()
+            if self.metrics_token is not None
+            else ""
+        )
+        if self.metrics_enabled and not metrics_token and not self.debug:
+            raise ValueError(
+                "METRICS_TOKEN is required when METRICS_ENABLED=true outside debug."
             )
         return self
 

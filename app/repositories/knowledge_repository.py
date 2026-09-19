@@ -57,3 +57,21 @@ class KnowledgeChunkRepository(BaseRepository[KnowledgeChunk]):
         )
         return list(self.db.scalars(statement).all())
 
+    def list_candidates(
+        self, project_id: int, query: str, *, limit: int
+    ) -> list[KnowledgeChunk]:
+        """Use PostgreSQL full-text search to bound expensive vector scoring."""
+
+        statement = (
+            select(KnowledgeChunk)
+            .options(joinedload(KnowledgeChunk.document))
+            .where(
+                KnowledgeChunk.project_id == project_id,
+                func.to_tsvector("simple", KnowledgeChunk.content).op("@@")(
+                    func.websearch_to_tsquery("simple", query)
+                ),
+            )
+            .order_by(KnowledgeChunk.id.desc())
+            .limit(limit)
+        )
+        return list(self.db.scalars(statement).all())

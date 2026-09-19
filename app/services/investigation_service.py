@@ -300,6 +300,9 @@ class InvestigationService:
         return InvestigationTaskRead.model_validate(task)
 
     def _validate_assignee(self, project, user_id: int | None) -> None:
+        self.validate_assignee(project, user_id)
+
+    def validate_assignee(self, project, user_id: int | None) -> None:
         if user_id is None:
             return
         user = self.users.get_by_id(user_id)
@@ -309,5 +312,5 @@ class InvestigationService:
             or not self.projects.is_member(project, user.id)
         ):
             raise ConflictException(
-                "Task assignee must be an active project member."
+                "Assignee must be an active project member."
             )

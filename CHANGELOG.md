@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.0 — 2026-09-18
+
+### Security
+
+- Refresh web en cookie HttpOnly/SameSite, access token solo en memoria y CSP.
+- Conexiones OSINT fijadas a la IP pública validada contra DNS rebinding.
+- Auditoría encadenada, evidencia firmada y métricas cerradas por defecto.
+- Imagen Debian estable actualizada y aprobada sin vulnerabilidades corregibles
+  HIGH/CRITICAL; dependencias de producción fijadas en `requirements.lock`.
+
+### Reliability
+
+- Reclamación atómica e idempotente de jobs, ACK tardío y límites Celery.
+- Scheduler con bloqueo `SKIP LOCKED` y migración/seeds en job único.
+- Readiness real de PostgreSQL, Redis, Ollama y sandbox.
+
+### SOC and UI
+
+- Hallazgos con responsable, SLA, MITRE ATT&CK, etiquetas y cierre validado.
+- Cadena de custodia visible, estado operativo real y corrección del formulario
+  de búsquedas programadas.
+- Recuperación RAG acotada por índice de texto completo antes del ranking.
+
 ## Unreleased — 2026-08-30
 
 ### Added

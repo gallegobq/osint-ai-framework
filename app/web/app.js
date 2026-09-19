@@ -1,8 +1,7 @@
 const API = "/api/v1";
 
 const state = {
-  accessToken: sessionStorage.getItem("linterna_access_token"),
-  refreshToken: localStorage.getItem("linterna_refresh_token"),
+  accessToken: null,
   user: null,
   projects: [],
   investigations: new Map(),
@@ -60,27 +59,20 @@ function truncate(value, length = 170) {
 
 function setTokens(tokens) {
   state.accessToken = tokens.access_token;
-  state.refreshToken = tokens.refresh_token;
-  sessionStorage.setItem("linterna_access_token", tokens.access_token);
-  localStorage.setItem("linterna_refresh_token", tokens.refresh_token);
 }
 
 function clearSession() {
   state.accessToken = null;
-  state.refreshToken = null;
   state.user = null;
   state.projects = [];
   state.investigations.clear();
-  sessionStorage.removeItem("linterna_access_token");
-  localStorage.removeItem("linterna_refresh_token");
 }
 
 async function refreshAccessToken() {
-  if (!state.refreshToken) return false;
   const response = await fetch(`${API}/auth/refresh`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: state.refreshToken }),
+    credentials: "same-origin",
+    headers: { "X-Refresh-Token-Transport": "cookie" },
   });
   if (!response.ok) return false;
   setTokens(await response.json());
@@ -91,7 +83,7 @@ async function api(path, options = {}, retry = true) {
   const headers = new Headers(options.headers || {});
   if (options.body && !(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
   if (state.accessToken) headers.set("Authorization", `Bearer ${state.accessToken}`);
-  const response = await fetch(`${API}${path}`, { ...options, headers });
+  const response = await fetch(`${API}${path}`, { ...options, headers, credentials: "same-origin" });
   if (response.status === 401 && retry && (await refreshAccessToken())) return api(path, options, false);
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
@@ -145,6 +137,19 @@ async function ensureInvestigations(force = false) {
   }));
 }
 
+async function getSystemHealth() {
+  try {
+    const response = await fetch(`${API}/health/ready`, {
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const health = await response.json();
+    return health;
+  } catch (_) {
+    return { status: "not_ready" };
+  }
+}
+
 function allInvestigations() {
   return [...state.investigations.values()].flat().sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 }
@@ -163,8 +168,20 @@ async function renderDashboard() {
   setActiveNav("dashboard");
   setHeader("Panel de investigación");
   loading();
-  await ensureInvestigations();
+  const [, health] = await Promise.all([ensureInvestigations(), getSystemHealth()]);
   const investigations = allInvestigations();
+  const findingGroups = await Promise.all(
+    investigations.map((investigation) =>
+      api(`/investigations/${investigation.id}/findings`).catch(() => [])
+    )
+  );
+  const severityRank = { critical: 5, high: 4, medium: 3, low: 2, informational: 1 };
+  const triage = findingGroups.flat()
+    .filter((item) => !["resolved", "false_positive", "accepted"].includes(item.status))
+    .sort((a, b) => (severityRank[b.severity] - severityRank[a.severity]) || (new Date(a.due_at || "9999-12-31") - new Date(b.due_at || "9999-12-31")));
+  const healthLabel = health.status === "ready" ? "Operativo" : health.status === "degraded" ? "Degradado" : "No disponible";
+  const unavailable = ["database", "redis", "ollama", "sandbox"].filter((component) => health[component] && health[component] !== "ok");
+  const healthDetail = unavailable.length ? `Revisar: ${unavailable.join(", ")}` : "API y servicios locales verificados";
   content.innerHTML = `
     <section class="hero-row">
       <div><p class="eyebrow ink">Panorama operativo</p><h2>Todo lo importante,<br />a la vista.</h2></div>
@@ -173,8 +190,9 @@ async function renderDashboard() {
     <section class="stats" aria-label="Resumen">
       <article><span>Proyectos</span><strong>${state.projects.length}</strong><small>visibles para ti</small></article>
       <article><span>Investigaciones</span><strong>${investigations.length}</strong><small>${investigations.filter((item) => item.status === "active").length} activas ahora</small></article>
-      <article class="status-stat"><span>Estado del sistema</span><strong><i></i>Operativo</strong><small>API y servicios locales</small></article>
+      <article class="status-stat ${health.status}"><span>Estado del sistema</span><strong><i></i>${healthLabel}</strong><small>${escapeHtml(healthDetail)}</small></article>
     </section>
+    ${triage.length ? `<section class="section-block"><div class="section-heading"><div><p class="section-kicker">Triaje SOC</p><h3>Prioridad operativa</h3></div><span class="badge critical">${triage.filter((item) => item.severity === "critical").length} críticas</span></div><div class="list-stack">${triage.slice(0, 8).map(findingItem).join("")}</div></section>` : ""}
     <section class="section-block">
       <div class="section-heading"><div><p class="section-kicker">Actividad</p><h3>Tus proyectos</h3></div><button class="back-button" data-view-link="projects" type="button">Ver todos <span>→</span></button></div>
       <div class="project-grid">${state.projects.length ? state.projects.slice(0, 6).map(projectCard).join("") : `<div class="empty-state"><strong>No hay proyectos todavía.</strong><br />Crea el primero para organizar tu investigación.</div>`}</div>
@@ -273,11 +291,31 @@ async function renderInvestigation(investigationId) {
 }
 
 function findingItem(item) {
-  return `<article class="evidence-item"><header><div><span class="badge ${item.severity}">${label(item.severity)}</span><span class="badge ${item.status}">${label(item.status)}</span><h4>${escapeHtml(item.title)}</h4></div><small>F${item.id}</small></header><p>${escapeHtml(truncate(item.description, 360))}</p><small>Confianza ${Math.round(Number(item.confidence) * 100)}% · ${formatDate(item.updated_at, true)}</small></article>`;
+  const nextStatus = item.status === "open" ? "triaged" : item.status === "triaged" ? "in_progress" : item.status === "in_progress" ? "resolved" : null;
+  const nextLabel = item.status === "open" ? "Clasificar" : item.status === "triaged" ? "Iniciar análisis" : "Resolver";
+  const mitre = [...(item.mitre_tactics || []), ...(item.mitre_techniques || [])].join(" · ");
+  return `<article class="evidence-item"><header><div><span class="badge ${item.severity}">${label(item.severity)}</span><span class="badge ${item.status}">${label(item.status)}</span><h4>${escapeHtml(item.title)}</h4></div><small>F${item.id}</small></header><p>${escapeHtml(truncate(item.description, 360))}</p><small>Confianza ${Math.round(Number(item.confidence) * 100)}% · Responsable #${item.assignee_id || "—"}${item.due_at ? ` · SLA ${formatDate(item.due_at, true)}` : ""}</small>${mitre ? `<p><small>MITRE ${escapeHtml(mitre)}</small></p>` : ""}<div class="tag-row"><button class="back-button" data-action="open-finding-activity" data-id="${item.id}" data-investigation-id="${item.investigation_id}" type="button">Actividad</button>${nextStatus ? `<button class="back-button" data-action="update-finding-status" data-id="${item.id}" data-investigation-id="${item.investigation_id}" data-next-status="${nextStatus}" type="button">${nextLabel} →</button>` : ""}</div></article>`;
+}
+
+function activityItem(item) {
+  const message = item.event_data?.message || item.event_data?.fields?.join(", ") || "Cambio registrado";
+  return `<article class="run-item"><header><strong>${escapeHtml(item.action.replace("findings.", ""))}</strong><small>${formatDate(item.created_at, true)}</small></header><p>${escapeHtml(message)}</p><small>Usuario #${item.actor_user_id || "sistema"} · evento A${item.id}</small></article>`;
+}
+
+async function openFindingActivity(investigationId, findingId) {
+  const list = $("#finding-activity-list");
+  list.innerHTML = `<div class="loading">Cargando actividad verificada…</div>`;
+  $("#finding-comment-investigation-id").value = investigationId;
+  $("#finding-comment-finding-id").value = findingId;
+  $("#finding-comment-message").value = "";
+  openDialog("finding-activity-dialog");
+  const activity = await api(`/investigations/${investigationId}/findings/${findingId}/activity`);
+  list.innerHTML = activity.length ? activity.map(activityItem).join("") : `<div class="inline-empty">Sin actividad registrada.</div>`;
 }
 
 function evidenceItem(item) {
-  return `<article class="evidence-item"><header><div><span class="badge">${escapeHtml(label(item.kind))}</span><h4>${escapeHtml(item.title)}</h4></div><small>E${item.id}</small></header><p>${escapeHtml(truncate(item.content, 420))}</p><small>Fuente registrada · ${formatDate(item.collected_at, true)}</small></article>`;
+  const source = item.source || {};
+  return `<article class="evidence-item"><header><div><span class="badge">${escapeHtml(label(item.kind))}</span><h4>${escapeHtml(item.title)}</h4></div><small>E${item.id}</small></header><p>${escapeHtml(truncate(item.content, 420))}</p><small>${escapeHtml(source.collector || "Fuente registrada")} · ${formatDate(item.collected_at, true)}</small><details><summary>Cadena de custodia</summary><dl><div><dt>Localizador</dt><dd>${escapeHtml(source.locator || "No disponible")}</dd></div><div><dt>Tipo</dt><dd>${escapeHtml(source.source_type || "—")}</dd></div><div><dt>SHA-256</dt><dd>${escapeHtml(item.content_hash)}</dd></div><div><dt>Firma HMAC</dt><dd>${escapeHtml(item.integrity_signature)}</dd></div></dl></details></article>`;
 }
 
 function runItem(run) {
@@ -318,6 +356,7 @@ function openNewFinding(investigationId) {
 function openNewSearch(investigationId) {
   $("#search-form").reset();
   $("#search-schedule-fields").hidden = true;
+  $("#search-schedule-name").required = false;
   $("#search-investigation-id").value = investigationId;
   const investigation = allInvestigations().find((item) => item.id === Number(investigationId)) || state.currentInvestigation;
   const pentest = investigation?.operation_mode === "pentest";
@@ -373,7 +412,7 @@ loginForm.addEventListener("submit", async (event) => {
   button.disabled = true;
   loginError.hidden = true;
   try {
-    const tokens = await api("/auth/login", { method: "POST", body: JSON.stringify({ username: $("#username").value.trim(), password: $("#password").value, mfa_code: $("#mfa-code").value.trim() || null }) });
+    const tokens = await api("/auth/login", { method: "POST", headers: { "X-Refresh-Token-Transport": "cookie" }, body: JSON.stringify({ username: $("#username").value.trim(), password: $("#password").value, mfa_code: $("#mfa-code").value.trim() || null }) });
     setTokens(tokens);
     await loadWorkspace();
     $("#password").value = "";
@@ -409,6 +448,19 @@ content.addEventListener("click", async (event) => {
     else if (action === "new-evidence") openNewEvidence(target.dataset.id);
     else if (action === "new-finding") openNewFinding(target.dataset.id);
     else if (action === "new-search") openNewSearch(target.dataset.id);
+    else if (action === "open-finding-activity") await openFindingActivity(target.dataset.investigationId, target.dataset.id);
+    else if (action === "update-finding-status") {
+      const nextStatus = target.dataset.nextStatus;
+      const payload = { status: nextStatus };
+      if (nextStatus === "resolved") {
+        const summary = window.prompt("Resume la verificación y la acción que permite cerrar el hallazgo:");
+        if (!summary || summary.trim().length < 3) return;
+        payload.resolution_summary = summary.trim();
+      }
+      await api(`/investigations/${target.dataset.investigationId}/findings/${target.dataset.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      showToast("Estado del hallazgo actualizado.");
+      await renderInvestigation(target.dataset.investigationId);
+    }
     else if (action === "download-report") await downloadReport(target.dataset.id);
     else if (action === "download-stix") await downloadArtifact(target.dataset.id, "report.stix.json", `investigacion-${target.dataset.id}.stix.json`, "STIX 2.1 descargado.");
     else if (action === "download-siem") await downloadArtifact(target.dataset.id, "report.ndjson", `investigacion-${target.dataset.id}.ndjson`, "Exportación SIEM descargada.");
@@ -458,6 +510,7 @@ function syncInvestigationMode() {
 $("#investigation-operation-mode").addEventListener("change", syncInvestigationMode);
 $("#search-scheduled").addEventListener("change", (event) => {
   $("#search-schedule-fields").hidden = !event.target.checked;
+  $("#search-schedule-name").required = event.target.checked;
   $("#search-allow-active").checked = false;
 });
 
@@ -497,9 +550,25 @@ $("#finding-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const form = event.currentTarget; const button = $("button[type=submit]", form); button.disabled = true;
   try {
     const investigationId = Number($("#finding-investigation-id").value);
-    await api(`/investigations/${investigationId}/findings`, { method: "POST", body: JSON.stringify({ title: $("#finding-title").value.trim(), description: $("#finding-description").value.trim(), severity: $("#finding-severity").value, confidence: Number($("#finding-confidence").value), remediation: $("#finding-remediation").value.trim() || null }) });
+    const commaList = (selector) => $(selector).value.split(",").map((value) => value.trim().toUpperCase()).filter(Boolean);
+    const tags = $("#finding-tags").value.split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+    const dueAt = $("#finding-due-at").value;
+    await api(`/investigations/${investigationId}/findings`, { method: "POST", body: JSON.stringify({ title: $("#finding-title").value.trim(), description: $("#finding-description").value.trim(), severity: $("#finding-severity").value, confidence: Number($("#finding-confidence").value), remediation: $("#finding-remediation").value.trim() || null, assignee_id: state.user.id, due_at: dueAt ? new Date(dueAt).toISOString() : null, mitre_tactics: commaList("#finding-mitre-tactics"), mitre_techniques: commaList("#finding-mitre-techniques"), tags }) });
     $("#finding-dialog").close(); showToast("Hallazgo SOC registrado."); await renderInvestigation(investigationId);
   } catch (error) { const box = $(".dialog-error", form); box.textContent = error.message; box.hidden = false; } finally { button.disabled = false; }
+});
+
+$("#finding-comment-form").addEventListener("submit", async (event) => {
+  event.preventDefault(); const form = event.currentTarget; const button = $("button[type=submit]", form); button.disabled = true;
+  try {
+    const investigationId = $("#finding-comment-investigation-id").value;
+    const findingId = $("#finding-comment-finding-id").value;
+    await api(`/investigations/${investigationId}/findings/${findingId}/comments`, { method: "POST", body: JSON.stringify({ message: $("#finding-comment-message").value.trim() }) });
+    $("#finding-comment-message").value = "";
+    showToast("Actividad registrada en la cadena de auditoría.");
+    await openFindingActivity(investigationId, findingId);
+  } catch (error) { const box = $(".dialog-error", form); box.textContent = error.message; box.hidden = false; }
+  finally { button.disabled = false; }
 });
 
 $("#search-form").addEventListener("submit", async (event) => {
@@ -525,6 +594,8 @@ $("#search-form").addEventListener("submit", async (event) => {
 });
 
 (async function bootstrap() {
-  if (!state.accessToken && !state.refreshToken) return showLogin();
-  try { await loadWorkspace(); } catch (_) { clearSession(); showLogin("Tu sesión terminó. Vuelve a entrar."); }
+  try {
+    if (!state.accessToken && !(await refreshAccessToken())) return showLogin();
+    await loadWorkspace();
+  } catch (_) { clearSession(); showLogin("Tu sesión terminó. Vuelve a entrar."); }
 })();

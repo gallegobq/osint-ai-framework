@@ -29,7 +29,7 @@ class TokenResponse(BaseModel):
     """
 
     access_token: str
-    refresh_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
 
     model_config = ConfigDict(from_attributes=True)

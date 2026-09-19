@@ -13,6 +13,8 @@ from app.repositories.soc_repository import (
 from app.schemas.project import ProjectMemberRole
 from app.schemas.soc import (
     FindingCreate,
+    FindingCommentCreate,
+    FindingActivityRead,
     FindingRead,
     FindingStatus,
     FindingUpdate,
@@ -42,10 +44,13 @@ class SocService:
     def create_finding(
         self, actor: User, investigation_id: int, data: FindingCreate
     ) -> FindingRead:
-        self.investigations.get_model(
+        investigation = self.investigations.get_model(
             actor,
             investigation_id,
             minimum_role=ProjectMemberRole.EDITOR,
+        )
+        self.investigations.validate_assignee(
+            investigation.project, data.assignee_id
         )
         if data.evidence_id is not None:
             evidence = self.evidence.get_by_id(data.evidence_id)
@@ -62,6 +67,10 @@ class SocService:
                 status=FindingStatus.OPEN.value,
                 confidence=data.confidence,
                 remediation=data.remediation,
+                assignee_id=data.assignee_id,
+                mitre_tactics=data.mitre_tactics,
+                mitre_techniques=data.mitre_techniques,
+                tags=data.tags,
                 due_at=data.due_at,
             )
         )
@@ -91,7 +100,7 @@ class SocService:
         finding_id: int,
         data: FindingUpdate,
     ) -> FindingRead:
-        self.investigations.get_model(
+        investigation = self.investigations.get_model(
             actor,
             investigation_id,
             minimum_role=ProjectMemberRole.EDITOR,
@@ -100,6 +109,10 @@ class SocService:
         if finding is None or finding.investigation_id != investigation_id:
             raise NotFoundException("Investigation finding")
         values = data.model_dump(exclude_unset=True)
+        if "assignee_id" in values:
+            self.investigations.validate_assignee(
+                investigation.project, values["assignee_id"]
+            )
         for enum_field in ("severity", "status"):
             if values.get(enum_field) is not None:
                 values[enum_field] = values[enum_field].value
@@ -110,6 +123,19 @@ class SocService:
             FindingStatus.FALSE_POSITIVE.value,
         }:
             finding.resolved_at = finding.resolved_at or datetime.now(timezone.utc)
+            if finding.status == FindingStatus.RESOLVED.value and not (
+                finding.resolution_summary or ""
+            ).strip():
+                raise BadRequestException(
+                    "Resolved findings require a resolution summary."
+                )
+            if finding.status in {
+                FindingStatus.FALSE_POSITIVE.value,
+                FindingStatus.ACCEPTED.value,
+            } and not (finding.closure_reason or "").strip():
+                raise BadRequestException(
+                    "Accepted or false-positive findings require a closure reason."
+                )
         else:
             finding.resolved_at = None
         self.audit.record(
@@ -121,6 +147,46 @@ class SocService:
         )
         self.findings.commit()
         return FindingRead.model_validate(finding)
+
+    def add_finding_comment(
+        self,
+        actor: User,
+        investigation_id: int,
+        finding_id: int,
+        data: FindingCommentCreate,
+    ) -> FindingActivityRead:
+        self.investigations.get_model(
+            actor,
+            investigation_id,
+            minimum_role=ProjectMemberRole.EDITOR,
+        )
+        finding = self.findings.get_by_id(finding_id)
+        if finding is None or finding.investigation_id != investigation_id:
+            raise NotFoundException("Investigation finding")
+        event = self.audit.record(
+            actor_user_id=actor.id,
+            action="findings.comment",
+            resource_type="finding",
+            resource_id=finding.id,
+            data={"message": data.message.strip()},
+        )
+        self.findings.commit()
+        return FindingActivityRead.model_validate(event)
+
+    def list_finding_activity(
+        self,
+        actor: User,
+        investigation_id: int,
+        finding_id: int,
+    ) -> list[FindingActivityRead]:
+        self.investigations.get_model(actor, investigation_id)
+        finding = self.findings.get_by_id(finding_id)
+        if finding is None or finding.investigation_id != investigation_id:
+            raise NotFoundException("Investigation finding")
+        return [
+            FindingActivityRead.model_validate(event)
+            for event in self.audit.list_resource_activity("finding", finding.id)
+        ]
 
     def create_schedule(
         self, actor: User, investigation_id: int, data: SearchScheduleCreate

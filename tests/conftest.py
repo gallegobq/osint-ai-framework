@@ -17,6 +17,8 @@ TEST_ENV = {
     "ACCESS_TOKEN_EXPIRE_MINUTES": "15",
     "REFRESH_TOKEN_EXPIRE_DAYS": "7",
     "RATE_LIMIT_ENABLED": "false",
+    "METRICS_ENABLED": "true",
+    "METRICS_TOKEN": "test-metrics-token",
 }
 
 for name, value in TEST_ENV.items():

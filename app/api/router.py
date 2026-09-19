@@ -18,6 +18,7 @@ from app.api.v1.analyze import router as analysis_router
 from app.api.v1.reports import router as reports_router
 from app.api.v1.soc import router as soc_router
 from app.api.v1.knowledge import router as knowledge_router
+from app.api.v1.audit import router as audit_router
 
 api_router = APIRouter()
 
@@ -37,3 +38,4 @@ api_router.include_router(analysis_router)
 api_router.include_router(reports_router)
 api_router.include_router(soc_router)
 api_router.include_router(knowledge_router)
+api_router.include_router(audit_router)

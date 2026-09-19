@@ -27,7 +27,7 @@ services:
       retries: 10
 
   ollama:
-    image: linterna/ollama:2026.08.31
+    image: linterna/ollama:2026.09.18
     restart: unless-stopped
     environment:
       OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
@@ -46,7 +46,7 @@ services:
       start_period: 10s
 
   sandbox:
-    image: linterna/sandbox:2026.08.31
+    image: linterna/sandbox:2026.09.18
     restart: unless-stopped
     expose:
       - "8090"
@@ -75,7 +75,7 @@ services:
       retries: 5
 
   api:
-    image: linterna/api:2026.08.31
+    image: linterna/api:2026.09.18
     restart: unless-stopped
     env_file: [.env]
     environment:
@@ -83,9 +83,16 @@ services:
       POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
       OLLAMA_URL: http://ollama:11434
+      AUTH_COOKIE_SECURE: "true"
+      TRUST_PROXY_HEADERS: "true"
     ports:
       - "127.0.0.1:${PORT:-8000}:8000"
+    networks:
+      - default
+      - sandbox_egress
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -101,9 +108,32 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 1g
+    cpus: 1.00
+
+  migrate:
+    image: linterna/api:2026.09.18
+    command: ["migrate"]
+    restart: "no"
+    env_file: [.env]
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
 
   worker:
-    image: linterna/api:2026.08.31
+    image: linterna/api:2026.09.18
     restart: unless-stopped
     command: ["celery", "--app=app.workers.celery_app:celery_app", "worker", "--loglevel=INFO"]
     env_file: [.env]
@@ -115,6 +145,8 @@ services:
       SOC_SANDBOX_ENABLED: ${SOC_SANDBOX_ENABLED:-true}
       SOC_SANDBOX_URL: http://sandbox:8090
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -126,9 +158,16 @@ services:
     networks:
       - default
       - sandbox_egress
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 2g
+    cpus: 2.00
 
   scheduler:
-    image: linterna/api:2026.08.31
+    image: linterna/api:2026.09.18
     restart: unless-stopped
     command: ["celery", "--app=app.workers.celery_app:celery_app", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
     env_file: [.env]
@@ -138,10 +177,19 @@ services:
       REDIS_URL: redis://redis:6379/0
       OLLAMA_URL: http://ollama:11434
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 0.50
 
 volumes:
   postgres_data:
@@ -150,4 +198,3 @@ volumes:
 
 networks:
   sandbox_egress:
-

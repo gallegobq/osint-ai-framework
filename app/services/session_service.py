@@ -34,6 +34,8 @@ class SessionService:
         device_name: str | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
+        *,
+        commit: bool = True,
     ) -> UserSession:
         """
         Crea una nueva sesión.
@@ -58,7 +60,8 @@ class SessionService:
         )
 
         self.repository.create(session)
-        self.repository.commit()
+        if commit:
+            self.repository.commit()
 
         return session
 

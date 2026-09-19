@@ -39,9 +39,11 @@ class EvidenceRead(BaseModel):
     title: str
     content: str
     content_hash: str
+    integrity_signature: str | None = None
     observed_at: datetime | None
     collected_at: datetime
     raw_data: dict
+    source: EvidenceSourceRead | None = None
     created_at: datetime
 
 

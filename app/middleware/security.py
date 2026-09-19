@@ -14,7 +14,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Permissions-Policy"] = (
             "camera=(), microphone=(), geolocation=()"
         )
-        if not settings.debug:
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "base-uri 'none'; "
+            "connect-src 'self'; "
+            "font-src 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'none'; "
+            "img-src 'self' data:; "
+            "object-src 'none'; "
+            "script-src 'self'; "
+            "style-src 'self'"
+        )
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        if not settings.debug and settings.auth_cookie_secure:
             response.headers["Strict-Transport-Security"] = (
                 "max-age=31536000; includeSubDomains"
             )

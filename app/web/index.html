@@ -40,7 +40,7 @@
           </div>
           <label>
             Usuario
-            <input id="username" name="username" autocomplete="username" value="admin" required />
+            <input id="username" name="username" autocomplete="username" required />
           </label>
           <label>
             Contraseña
@@ -157,9 +157,25 @@
         <div class="form-row"><label>Severidad<select id="finding-severity"><option value="informational">Informativa</option><option value="low">Baja</option><option value="medium" selected>Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></label><label>Confianza<input id="finding-confidence" type="number" min="0" max="1" step="0.05" value="0.75" required /></label></div>
         <label>Descripción<textarea id="finding-description" maxlength="20000" minlength="3" rows="5" required placeholder="Qué se observó, por qué importa y cómo se verificó"></textarea></label>
         <label>Remediación<textarea id="finding-remediation" maxlength="20000" rows="3" placeholder="Acción recomendada y criterio de cierre"></textarea></label>
+        <div class="form-row"><label>Vencimiento SLA<input id="finding-due-at" type="datetime-local" /></label><label>Responsable<input value="Se asignará a tu usuario" disabled /></label></div>
+        <div class="form-row"><label>Tácticas MITRE<input id="finding-mitre-tactics" maxlength="160" placeholder="TA0001, TA0003" /></label><label>Técnicas MITRE<input id="finding-mitre-techniques" maxlength="400" placeholder="T1190, T1059.001" /></label></div>
+        <label>Etiquetas<input id="finding-tags" maxlength="500" placeholder="phishing, exposición, prioridad-cliente" /></label>
         <p class="dialog-error form-error" role="alert" hidden></p>
         <footer><button class="button button-quiet" type="button" data-close-dialog>Cancelar</button><button class="button button-primary" type="submit">Guardar hallazgo <span>→</span></button></footer>
       </form>
+    </dialog>
+    <dialog id="finding-activity-dialog" class="modal">
+      <section class="modal-card modal-wide">
+        <header><div><p class="section-kicker">Trazabilidad SOC</p><h2>Actividad del hallazgo</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Cerrar">×</button></header>
+        <div id="finding-activity-list" class="list-stack" aria-live="polite"></div>
+        <form id="finding-comment-form">
+          <input id="finding-comment-investigation-id" type="hidden" />
+          <input id="finding-comment-finding-id" type="hidden" />
+          <label>Comentario operativo<textarea id="finding-comment-message" minlength="1" maxlength="5000" rows="3" required placeholder="Decisión, evidencia revisada o siguiente acción"></textarea></label>
+          <p class="dialog-error form-error" role="alert" hidden></p>
+          <footer><button class="button button-quiet" type="button" data-close-dialog>Cerrar</button><button class="button button-primary" type="submit">Registrar actividad <span>→</span></button></footer>
+        </form>
+      </section>
     </dialog>
     <div id="toast" class="toast" role="status" hidden></div>
   </body>

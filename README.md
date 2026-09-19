@@ -11,7 +11,7 @@ intercambiables.
 - Proyectos, miembros, investigaciones y tareas.
 - Modos por investigación: superficie de ataque, respuesta a incidentes y
   pentesting autorizado con reglas de engagement.
-- Evidencia con procedencia, SHA-256, deduplicación y timestamps.
+- Evidencia con procedencia visible, SHA-256, firma HMAC, deduplicación y timestamps.
 - Entidades y relaciones citables a evidencia.
 - Recolección asíncrona mediante colectores desacoplados.
 - Catálogo de 43 perfiles: 42 colectores pasivos para dominio, hostname, IP,
@@ -24,11 +24,12 @@ intercambiables.
 - Análisis con Ollama: resumen, entidades, relaciones y sentimiento.
 - Linterna SOC con RAG local por proyecto: documentos trazables, embeddings,
   recuperación híbrida, abstención y respuestas con citas validadas.
-- Hallazgos SOC con severidad, estado, confianza, remediación y evidencia.
+- Hallazgos SOC con responsable, SLA, MITRE ATT&CK, estado, confianza,
+  remediación y criterio de cierre.
 - Búsquedas pasivas programadas para detectar cambios.
 - Reportes narrativos y exportaciones STIX 2.1, SIEM NDJSON y CEF.
 - Rate limiting con Redis, métricas Prometheus y metadatos de retención/legal hold.
-- Auditoría del dominio OSINT y separación liveness/readiness.
+- Auditoría encadenada verificable y readiness por componente.
 
 Los resultados LLM son hipótesis: nunca se incorporan automáticamente como
 hechos o entidades verificadas y siempre requieren revisión humana.

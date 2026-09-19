@@ -90,6 +90,8 @@ input:focus, textarea:focus, select:focus { background: var(--white); border-col
 .stats article { min-height: 155px; display: flex; flex-direction: column; justify-content: space-between; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,253,248,.65); }
 .stats span, .stats small { color: #73817e; font-size: 12px; }.stats strong { font: 500 42px/1 Georgia, serif; }
 .stats .status-stat { color: var(--white); background: var(--ink); }.stats .status-stat span,.stats .status-stat small { color: rgba(255,255,255,.55); }.status-stat strong { display: flex; align-items: center; gap: 11px; font: 700 17px/1 sans-serif; }.status-stat i { width: 9px; height: 9px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 0 5px rgba(213,240,88,.1); }
+.status-stat.degraded i { background: #f2b84b; box-shadow: 0 0 0 5px rgba(242,184,75,.12); }
+.status-stat.not_ready i { background: #ee6a5f; box-shadow: 0 0 0 5px rgba(238,106,95,.12); }
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 20px; }.section-heading h3 { margin: 0; font: 500 32px/1 Georgia, serif; }.section-heading p { margin: 0; font-size: 13px; }
 .project-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
 .project-card { min-height: 190px; display: flex; flex-direction: column; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--white); box-shadow: 0 4px 0 rgba(21,43,43,.03); }

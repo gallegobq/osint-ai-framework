@@ -1,4 +1,5 @@
 import hashlib
+import ipaddress
 import logging
 import time
 
@@ -38,7 +39,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             else settings.rate_limit_window_seconds
         )
         client = request.client.host if request.client else "unknown"
-        client_hash = hashlib.sha256(client.encode()).hexdigest()[:24]
+        if settings.trust_proxy_headers:
+            forwarded = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+            try:
+                client = str(ipaddress.ip_address(forwarded))
+            except ValueError:
+                pass
+        authorization = request.headers.get("authorization", "")
+        identity = f"{client}|{authorization}" if authorization else client
+        client_hash = hashlib.sha256(identity.encode()).hexdigest()[:24]
         category = "auth" if auth_request else "general"
         bucket = int(time.time()) // window
         key = f"rate:{category}:{client_hash}:{bucket}"

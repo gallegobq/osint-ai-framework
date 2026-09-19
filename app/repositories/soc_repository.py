@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import case, select
 from sqlalchemy.orm import Session
@@ -54,3 +54,22 @@ class SearchScheduleRepository(BaseRepository[SearchSchedule]):
             .limit(limit)
         )
         return list(self.db.scalars(statement).all())
+
+    def claim_due(self, now: datetime, *, limit: int = 25) -> list[SearchSchedule]:
+        statement = (
+            select(SearchSchedule)
+            .where(
+                SearchSchedule.enabled.is_(True),
+                SearchSchedule.next_run_at <= now,
+            )
+            .order_by(SearchSchedule.next_run_at.asc())
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+        due = list(self.db.scalars(statement).all())
+        for schedule in due:
+            schedule.next_run_at = now + timedelta(
+                minutes=schedule.interval_minutes
+            )
+        self.db.commit()
+        return due

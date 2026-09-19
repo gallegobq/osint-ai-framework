@@ -50,6 +50,11 @@ class Finding(BaseModel):
         nullable=False,
         index=True,
     )
+    assignee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     severity: Mapped[str] = mapped_column(
@@ -62,6 +67,11 @@ class Finding(BaseModel):
         Numeric(4, 3), nullable=False, default=Decimal("0.500")
     )
     remediation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    mitre_tactics: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    mitre_techniques: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    tags: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    resolution_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    closure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     due_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -71,7 +81,8 @@ class Finding(BaseModel):
 
     investigation = relationship("Investigation")
     evidence = relationship("Evidence")
-    created_by = relationship("User")
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    assignee = relationship("User", foreign_keys=[assignee_id])
 
 
 class SearchSchedule(BaseModel):

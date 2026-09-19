@@ -22,5 +22,11 @@ class AuditEvent(BaseModel):
     event_data: Mapped[dict] = mapped_column(
         "data", JSON, nullable=False, default=dict
     )
+    previous_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    event_hash: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, index=True
+    )
 
     actor = relationship("User")
