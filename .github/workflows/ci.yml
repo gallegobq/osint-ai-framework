@@ -69,7 +69,7 @@ jobs:
       - name: Verify migrations
         run: alembic upgrade head
       - name: Test
-        run: pytest -q
+        run: python -m pytest -q
 
   container-security:
     runs-on: ubuntu-24.04
