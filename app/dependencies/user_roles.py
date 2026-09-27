@@ -7,6 +7,8 @@ from app.dependencies.database import get_db
 from app.repositories.role_repository import RoleRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.user_role_repository import UserRoleRepository
+from app.repositories.audit_repository import AuditRepository
+from app.services.audit_service import AuditService
 from app.services.user_role_service import UserRoleService
 
 
@@ -24,4 +26,5 @@ def get_user_role_service(
         user_repository=user_repository,
         role_repository=role_repository,
         repository=user_role_repository,
+        audit=AuditService(AuditRepository(db)),
     )

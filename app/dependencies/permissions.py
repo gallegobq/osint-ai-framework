@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.dependencies.database import get_db
 from app.repositories.permission_repository import PermissionRepository
+from app.repositories.audit_repository import AuditRepository
+from app.services.audit_service import AuditService
 from app.services.permission_service import PermissionService
 
 
@@ -18,4 +20,5 @@ def get_permission_service(
 
     return PermissionService(
         repository=repository,
+        audit=AuditService(AuditRepository(db)),
     )

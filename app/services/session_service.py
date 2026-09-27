@@ -132,10 +132,18 @@ class SessionService:
         user_id: int,
         session_id: int,
     ) -> None:
+        session = self.get_owned_session(user_id, session_id)
+        self.revoke_session(session)
+
+    def get_owned_session(
+        self,
+        user_id: int,
+        session_id: int,
+    ) -> UserSession:
         session = self.repository.get_by_id(session_id)
         if session is None or session.user_id != user_id:
             raise InvalidCredentialsException()
-        self.revoke_session(session)
+        return session
 
     def verify_refresh_token(
         self,

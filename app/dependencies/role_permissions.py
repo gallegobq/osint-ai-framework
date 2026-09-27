@@ -9,6 +9,8 @@ from app.repositories.role_permission_repository import (
     RolePermissionRepository,
 )
 from app.repositories.role_repository import RoleRepository
+from app.repositories.audit_repository import AuditRepository
+from app.services.audit_service import AuditService
 from app.services.role_permission_service import (
     RolePermissionService,
 )
@@ -28,4 +30,5 @@ def get_role_permission_service(
         role_repository=role_repository,
         permission_repository=permission_repository,
         repository=repository,
+        audit=AuditService(AuditRepository(db)),
     )

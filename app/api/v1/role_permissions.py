@@ -9,6 +9,7 @@ from app.dependencies.role_permissions import (
 )
 from app.schemas.permission import PermissionRead
 from app.schemas.role_permission import RolePermissionAssign
+from app.models.user import User
 from app.services.role_permission_service import (
     RolePermissionService,
 )
@@ -46,17 +47,14 @@ def get_role_permissions(
 @router.post(
     "/{role_id}/permissions",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[
-        Depends(
-            require_permission(
-                Permissions.Roles.UPDATE,
-            )
-        )
-    ],
 )
 def assign_permission(
     role_id: int,
     data: RolePermissionAssign,
+    current_user: Annotated[
+        User,
+        Depends(require_permission(Permissions.Roles.UPDATE)),
+    ],
     service: Annotated[
         RolePermissionService,
         Depends(get_role_permission_service),
@@ -65,23 +63,21 @@ def assign_permission(
     service.assign_permission(
         role_id=role_id,
         permission_id=data.permission_id,
+        actor_user_id=current_user.id,
     )
 
 
 @router.delete(
     "/{role_id}/permissions/{permission_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[
-        Depends(
-            require_permission(
-                Permissions.Roles.UPDATE,
-            )
-        )
-    ],
 )
 def remove_permission(
     role_id: int,
     permission_id: int,
+    current_user: Annotated[
+        User,
+        Depends(require_permission(Permissions.Roles.UPDATE)),
+    ],
     service: Annotated[
         RolePermissionService,
         Depends(get_role_permission_service),
@@ -90,4 +86,5 @@ def remove_permission(
     service.remove_permission(
         role_id=role_id,
         permission_id=permission_id,
+        actor_user_id=current_user.id,
     )

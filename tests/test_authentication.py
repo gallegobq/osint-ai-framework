@@ -22,7 +22,8 @@ def test_login_rejects_inactive_user() -> None:
         is_active=False,
     )
     session_service = Mock()
-    service = AuthenticationService(repository, session_service)
+    audit_service = Mock()
+    service = AuthenticationService(repository, session_service, audit_service)
 
     with pytest.raises(InvalidCredentialsException):
         service.login(
@@ -30,6 +31,8 @@ def test_login_rejects_inactive_user() -> None:
         )
 
     session_service.create_session.assert_not_called()
+    audit_service.record.assert_called_once()
+    repository.commit.assert_called_once()
 
 
 def test_expired_refresh_session_is_rejected() -> None:

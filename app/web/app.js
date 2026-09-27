@@ -46,6 +46,12 @@ function escapeHtml(value) {
 }
 
 function label(value) { return labels[value] || String(value || "—"); }
+function userLabel(userId, empty = "Sin asignar") {
+  if (!userId) return empty;
+  return Number(userId) === Number(state.user?.id)
+    ? state.user.username
+    : `Usuario #${userId}`;
+}
 function formatDate(value, detail = false) {
   if (!value) return "Sin fecha";
   return new Intl.DateTimeFormat("es-CO", detail
@@ -115,6 +121,9 @@ function showWorkspace() {
   workspaceView.hidden = false;
   $("#user-name").textContent = state.user.username;
   $("#user-initial").textContent = state.user.username.slice(0, 1).toUpperCase();
+  $("#user-context").textContent = state.user.mfa_enabled
+    ? "MFA activo"
+    : "Cuenta autenticada";
 }
 
 function setHeader(title, breadcrumb = "Espacio de trabajo /") {
@@ -261,7 +270,7 @@ async function renderProject(projectId) {
   content.innerHTML = `<button class="back-button" data-view-link="projects" type="button">← Volver a proyectos</button>
     <section class="page-head"><div><p class="section-kicker">Proyecto · ${escapeHtml(project.slug)}</p><h2>${escapeHtml(project.name)}</h2><p class="muted">${escapeHtml(project.description || "Sin descripción definida.")}</p></div><div class="page-actions"><span class="badge ${project.status}">${label(project.status)}</span><button class="button button-primary" data-action="new-investigation" data-project-id="${project.id}" type="button">Nueva investigación <span>＋</span></button></div></section>
     <div class="project-detail-grid"><section class="surface"><div class="surface-head"><div><h3>Investigaciones</h3><p>${investigations.length} ${investigations.length === 1 ? "caso registrado" : "casos registrados"}</p></div></div><div class="surface-body"><div class="list-stack">${investigations.length ? investigations.map(investigationListItem).join("") : `<div class="inline-empty">Este proyecto aún no tiene investigaciones.</div>`}</div></div></section>
-    <aside class="surface scope-card"><p class="section-kicker">Ficha local</p><h3>Alcance del proyecto</h3><p>${escapeHtml(project.description || "Añade una descripción para dejar claros el objetivo y los límites de este espacio.")}</p><dl><div><dt>Propietario</dt><dd>Usuario #${project.owner_id}</dd></div><div><dt>Creado</dt><dd>${formatDate(project.created_at)}</dd></div><div><dt>Estado</dt><dd>${label(project.status)}</dd></div><div><dt>Casos</dt><dd>${investigations.length}</dd></div></dl></aside></div>`;
+    <aside class="surface scope-card"><p class="section-kicker">Ficha local</p><h3>Alcance del proyecto</h3><p>${escapeHtml(project.description || "Añade una descripción para dejar claros el objetivo y los límites de este espacio.")}</p><dl><div><dt>Propietario</dt><dd>${escapeHtml(userLabel(project.owner_id))}</dd></div><div><dt>Creado</dt><dd>${formatDate(project.created_at)}</dd></div><div><dt>Estado</dt><dd>${label(project.status)}</dd></div><div><dt>Casos</dt><dd>${investigations.length}</dd></div></dl></aside></div>`;
 }
 
 async function renderInvestigation(investigationId) {
@@ -273,33 +282,81 @@ async function renderInvestigation(investigationId) {
   setActiveNav("investigations");
   setHeader(investigation.title, `Espacio de trabajo / ${project?.name || "Proyecto"} /`);
   loading();
-  const [evidence, runs, tasks, findings, schedules] = await Promise.all([
+  const [evidence, runs, tasks, findings, schedules, entities, relations] = await Promise.all([
     api(`/investigations/${investigation.id}/evidence`),
     api(`/investigations/${investigation.id}/search-runs`),
     api(`/investigations/${investigation.id}/tasks`),
     api(`/investigations/${investigation.id}/findings`),
     api(`/investigations/${investigation.id}/search-schedules`),
+    api(`/investigations/${investigation.id}/entities`),
+    api(`/investigations/${investigation.id}/relations`),
   ]);
   const latestRuns = [...runs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   content.innerHTML = `<button class="back-button" data-action="open-project" data-id="${investigation.project_id}" type="button">← Volver a ${escapeHtml(project?.name || "proyecto")}</button>
     <section class="page-head investigation-head"><div><div class="tag-row"><span class="badge ${investigation.status}">${label(investigation.status)}</span><span class="badge ${investigation.priority}">${label(investigation.priority)}</span><span class="badge">${label(investigation.kind)}</span><span class="badge">${label(investigation.operation_mode)}</span></div><h2>${escapeHtml(investigation.title)}</h2><p class="muted">${escapeHtml(investigation.description || "Sin descripción de caso.")}</p></div><div class="page-actions"><button class="button button-quiet" data-action="download-report" data-id="${investigation.id}" type="button">Reporte</button><button class="button button-dark" data-action="new-search" data-id="${investigation.id}" type="button">Buscar fuentes <span>◎</span></button></div></section>
     ${operationBanner(investigation)}
     <section class="stats compact-stats" aria-label="Resumen del caso"><article><span>Evidencias</span><strong>${evidence.length}</strong><small>registros trazables</small></article><article><span>Hallazgos</span><strong>${findings.length}</strong><small>${findings.filter((item) => !["resolved","false_positive"].includes(item.status)).length} abiertos</small></article><article><span>Vigilancias</span><strong>${schedules.filter((item) => item.enabled).length}</strong><small>${runs.length} búsquedas ejecutadas</small></article></section>
+    ${relationshipMap(entities, relations, evidence)}
     <div class="workbench"><div class="stack-column"><section class="surface"><div class="surface-head"><div><h3>Hallazgos SOC</h3><p>Severidad, estado, confianza y remediación</p></div><button class="back-button" data-action="new-finding" data-id="${investigation.id}" type="button">＋ Crear</button></div><div class="surface-body">${findings.length ? findings.map(findingItem).join("") : `<div class="inline-empty">Aún no hay hallazgos clasificados.</div>`}</div></section><section class="surface"><div class="surface-head"><div><h3>Evidencia</h3><p>Registros conservados con procedencia y huella digital</p></div><button class="back-button" data-action="new-evidence" data-id="${investigation.id}" type="button">＋ Añadir</button></div><div class="surface-body">${evidence.length ? evidence.map(evidenceItem).join("") : `<div class="inline-empty">No hay evidencia registrada todavía.<br />Añade una nota manual o inicia una búsqueda.</div>`}</div></section></div>
       <aside><section class="surface"><div class="surface-head"><div><h3>Acciones</h3><p>Herramientas del caso</p></div></div><div class="surface-body action-menu"><button class="action-card" data-action="new-search" data-id="${investigation.id}" type="button"><span>◎</span><span><strong>Búsqueda OSINT</strong><small>Ejecución única o programada</small></span><span>→</span></button><button class="action-card" data-action="new-finding" data-id="${investigation.id}" type="button"><span>!</span><span><strong>Hallazgo SOC</strong><small>Clasifica severidad y estado</small></span><span>→</span></button><button class="action-card" data-action="download-report" data-id="${investigation.id}" type="button"><span>↓</span><span><strong>Reporte narrativo</strong><small>Inglés claro, formato Markdown</small></span><span>→</span></button><button class="action-card" data-action="download-stix" data-id="${investigation.id}" type="button"><span>⇄</span><span><strong>STIX 2.1</strong><small>MISP y OpenCTI</small></span><span>↓</span></button><button class="action-card" data-action="download-siem" data-id="${investigation.id}" type="button"><span>≡</span><span><strong>SIEM NDJSON</strong><small>Ingesta de eventos</small></span><span>↓</span></button></div></section>
       <section class="surface runs-surface"><div class="surface-head"><div><h3>Búsquedas recientes</h3><p>Estado del orquestador</p></div><button class="back-button" data-action="refresh-investigation" data-id="${investigation.id}" type="button" aria-label="Actualizar">↻</button></div><div class="surface-body">${latestRuns.length ? `<div class="run-list">${latestRuns.slice(0,5).map(runItem).join("")}</div>` : `<div class="inline-empty">Sin búsquedas todavía.</div>`}</div></section></aside></div>`;
+}
+
+function relationItem(relation, entityById, evidenceIds) {
+  const source = entityById.get(Number(relation.source_entity_id));
+  const target = entityById.get(Number(relation.target_entity_id));
+  const evidenceId = relation.evidence_id ? Number(relation.evidence_id) : null;
+  const evidenceVisible = evidenceId && evidenceIds.has(evidenceId);
+  const confidenceValue = Number(relation.confidence);
+  const confidence = Number.isFinite(confidenceValue)
+    ? `${Math.round(confidenceValue * 100)}% de confianza`
+    : "Confianza no disponible";
+  const unresolved = !source || !target;
+  const proof = evidenceVisible
+    ? `<button class="back-button relation-proof" data-action="focus-evidence" data-id="${evidenceId}" type="button">Respaldada por E${evidenceId} →</button>`
+    : evidenceId
+      ? `<span class="relation-proof unavailable">E${evidenceId} vinculada fuera de la vista</span>`
+      : `<span class="relation-proof missing">Sin evidencia enlazada</span>`;
+
+  return `<article class="relation-row ${unresolved ? "unresolved" : ""}">
+    <div class="relation-path">
+      <span class="entity-node"><small>Origen · ${escapeHtml(label(source?.entity_type || "entidad"))}</small><strong>${escapeHtml(source?.canonical_name || `Entidad #${relation.source_entity_id} no disponible`)}</strong></span>
+      <span class="relation-edge"><strong>${escapeHtml(label(relation.relation_type))}</strong><small>${confidence}</small><i aria-hidden="true">→</i></span>
+      <span class="entity-node"><small>Destino · ${escapeHtml(label(target?.entity_type || "entidad"))}</small><strong>${escapeHtml(target?.canonical_name || `Entidad #${relation.target_entity_id} no disponible`)}</strong></span>
+    </div>
+    <footer>${proof}</footer>
+  </article>`;
+}
+
+function relationshipMap(entities, relations, evidence) {
+  const entityById = new Map(entities.map((item) => [Number(item.id), item]));
+  const evidenceIds = new Set(evidence.map((item) => Number(item.id)));
+  const linkedCount = relations.filter((item) => item.evidence_id).length;
+  const coverage = relations.length ? Math.round((linkedCount / relations.length) * 100) : 0;
+  const visibleRelations = relations.slice(0, 50);
+  const limitNote = relations.length > visibleRelations.length
+    ? `<p class="relation-limit">Mostrando 50 de ${relations.length} relaciones.</p>`
+    : "";
+
+  return `<section class="surface relationship-surface" aria-labelledby="relationship-map-title">
+    <div class="surface-head"><div><h3 id="relationship-map-title">Mapa de relaciones trazables</h3><p>${entities.length} entidades · ${relations.length} relaciones · ${coverage}% con evidencia enlazada</p></div></div>
+    <div class="surface-body">${visibleRelations.length
+      ? `<div class="relationship-map">${visibleRelations.map((item) => relationItem(item, entityById, evidenceIds)).join("")}</div>${limitNote}`
+      : `<div class="inline-empty">Aún no hay relaciones estructuradas. El mapa aparecerá cuando el análisis vincule entidades.</div>`}
+    </div>
+  </section>`;
 }
 
 function findingItem(item) {
   const nextStatus = item.status === "open" ? "triaged" : item.status === "triaged" ? "in_progress" : item.status === "in_progress" ? "resolved" : null;
   const nextLabel = item.status === "open" ? "Clasificar" : item.status === "triaged" ? "Iniciar análisis" : "Resolver";
   const mitre = [...(item.mitre_tactics || []), ...(item.mitre_techniques || [])].join(" · ");
-  return `<article class="evidence-item"><header><div><span class="badge ${item.severity}">${label(item.severity)}</span><span class="badge ${item.status}">${label(item.status)}</span><h4>${escapeHtml(item.title)}</h4></div><small>F${item.id}</small></header><p>${escapeHtml(truncate(item.description, 360))}</p><small>Confianza ${Math.round(Number(item.confidence) * 100)}% · Responsable #${item.assignee_id || "—"}${item.due_at ? ` · SLA ${formatDate(item.due_at, true)}` : ""}</small>${mitre ? `<p><small>MITRE ${escapeHtml(mitre)}</small></p>` : ""}<div class="tag-row"><button class="back-button" data-action="open-finding-activity" data-id="${item.id}" data-investigation-id="${item.investigation_id}" type="button">Actividad</button>${nextStatus ? `<button class="back-button" data-action="update-finding-status" data-id="${item.id}" data-investigation-id="${item.investigation_id}" data-next-status="${nextStatus}" type="button">${nextLabel} →</button>` : ""}</div></article>`;
+  return `<article class="evidence-item"><header><div><span class="badge ${item.severity}">${label(item.severity)}</span><span class="badge ${item.status}">${label(item.status)}</span><h4>${escapeHtml(item.title)}</h4></div><small>F${item.id}</small></header><p>${escapeHtml(truncate(item.description, 360))}</p><small>Confianza ${Math.round(Number(item.confidence) * 100)}% · Responsable ${escapeHtml(userLabel(item.assignee_id))}${item.due_at ? ` · SLA ${formatDate(item.due_at, true)}` : ""}</small>${mitre ? `<p><small>MITRE ${escapeHtml(mitre)}</small></p>` : ""}<div class="tag-row"><button class="back-button" data-action="open-finding-activity" data-id="${item.id}" data-investigation-id="${item.investigation_id}" type="button">Actividad</button>${nextStatus ? `<button class="back-button" data-action="update-finding-status" data-id="${item.id}" data-investigation-id="${item.investigation_id}" data-next-status="${nextStatus}" type="button">${nextLabel} →</button>` : ""}</div></article>`;
 }
 
 function activityItem(item) {
   const message = item.event_data?.message || item.event_data?.fields?.join(", ") || "Cambio registrado";
-  return `<article class="run-item"><header><strong>${escapeHtml(item.action.replace("findings.", ""))}</strong><small>${formatDate(item.created_at, true)}</small></header><p>${escapeHtml(message)}</p><small>Usuario #${item.actor_user_id || "sistema"} · evento A${item.id}</small></article>`;
+  return `<article class="run-item"><header><strong>${escapeHtml(item.action.replace("findings.", ""))}</strong><small>${formatDate(item.created_at, true)}</small></header><p>${escapeHtml(message)}</p><small>${escapeHtml(userLabel(item.actor_user_id, "Sistema"))} · evento A${item.id}</small></article>`;
 }
 
 async function openFindingActivity(investigationId, findingId) {
@@ -315,7 +372,20 @@ async function openFindingActivity(investigationId, findingId) {
 
 function evidenceItem(item) {
   const source = item.source || {};
-  return `<article class="evidence-item"><header><div><span class="badge">${escapeHtml(label(item.kind))}</span><h4>${escapeHtml(item.title)}</h4></div><small>E${item.id}</small></header><p>${escapeHtml(truncate(item.content, 420))}</p><small>${escapeHtml(source.collector || "Fuente registrada")} · ${formatDate(item.collected_at, true)}</small><details><summary>Cadena de custodia</summary><dl><div><dt>Localizador</dt><dd>${escapeHtml(source.locator || "No disponible")}</dd></div><div><dt>Tipo</dt><dd>${escapeHtml(source.source_type || "—")}</dd></div><div><dt>SHA-256</dt><dd>${escapeHtml(item.content_hash)}</dd></div><div><dt>Firma HMAC</dt><dd>${escapeHtml(item.integrity_signature)}</dd></div></dl></details></article>`;
+  return `<article id="evidence-${item.id}" class="evidence-item" tabindex="-1"><header><div><span class="badge">${escapeHtml(label(item.kind))}</span><h4>${escapeHtml(item.title)}</h4></div><small>E${item.id}</small></header><p>${escapeHtml(truncate(item.content, 420))}</p><small>${escapeHtml(source.collector || "Fuente registrada")} · ${formatDate(item.collected_at, true)}</small><details><summary>Cadena de custodia</summary><dl><div><dt>Localizador</dt><dd>${escapeHtml(source.locator || "No disponible")}</dd></div><div><dt>Tipo</dt><dd>${escapeHtml(source.source_type || "—")}</dd></div><div><dt>SHA-256</dt><dd>${escapeHtml(item.content_hash)}</dd></div><div><dt>Firma HMAC</dt><dd>${escapeHtml(item.integrity_signature)}</dd></div><div><dt>Esquema</dt><dd>v${item.integrity_version || 1} · ${escapeHtml(item.integrity_key_id || "legacy")}</dd></div></dl><button class="back-button" data-action="verify-evidence" data-id="${item.id}" data-investigation-id="${item.investigation_id}" type="button">Verificar integridad</button></details></article>`;
+}
+
+function focusEvidence(evidenceId) {
+  const id = Number(evidenceId);
+  const card = Number.isInteger(id) ? $(`#evidence-${id}`) : null;
+  if (!card) return showToast("La evidencia enlazada no está visible en esta página.", true);
+  const custody = $("details", card);
+  if (custody) custody.open = true;
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  card.focus({ preventScroll: true });
+  card.classList.remove("evidence-focus");
+  requestAnimationFrame(() => card.classList.add("evidence-focus"));
+  setTimeout(() => card.classList.remove("evidence-focus"), 1800);
 }
 
 function runItem(run) {
@@ -352,6 +422,12 @@ function openNewFinding(investigationId) {
   $("#finding-investigation-id").value = investigationId;
   $("#finding-confidence").value = "0.75";
   openDialog("finding-dialog");
+}
+function openResolveFinding(investigationId, findingId) {
+  $("#resolve-finding-form").reset();
+  $("#resolve-finding-investigation-id").value = investigationId;
+  $("#resolve-finding-id").value = findingId;
+  openDialog("resolve-finding-dialog");
 }
 function openNewSearch(investigationId) {
   $("#search-form").reset();
@@ -449,14 +525,23 @@ content.addEventListener("click", async (event) => {
     else if (action === "new-finding") openNewFinding(target.dataset.id);
     else if (action === "new-search") openNewSearch(target.dataset.id);
     else if (action === "open-finding-activity") await openFindingActivity(target.dataset.investigationId, target.dataset.id);
+    else if (action === "focus-evidence") focusEvidence(target.dataset.id);
+    else if (action === "verify-evidence") {
+      const result = await api(`/investigations/${target.dataset.investigationId}/evidence/${target.dataset.id}/integrity`);
+      showToast(
+        result.valid
+          ? `Evidencia verificada con ${result.scheme}.`
+          : `La evidencia no supera la verificación: ${result.warnings.join(" ")}`,
+        !result.valid,
+      );
+    }
     else if (action === "update-finding-status") {
       const nextStatus = target.dataset.nextStatus;
-      const payload = { status: nextStatus };
       if (nextStatus === "resolved") {
-        const summary = window.prompt("Resume la verificación y la acción que permite cerrar el hallazgo:");
-        if (!summary || summary.trim().length < 3) return;
-        payload.resolution_summary = summary.trim();
+        openResolveFinding(target.dataset.investigationId, target.dataset.id);
+        return;
       }
+      const payload = { status: nextStatus };
       await api(`/investigations/${target.dataset.investigationId}/findings/${target.dataset.id}`, { method: "PATCH", body: JSON.stringify(payload) });
       showToast("Estado del hallazgo actualizado.");
       await renderInvestigation(target.dataset.investigationId);
@@ -569,6 +654,24 @@ $("#finding-comment-form").addEventListener("submit", async (event) => {
     await openFindingActivity(investigationId, findingId);
   } catch (error) { const box = $(".dialog-error", form); box.textContent = error.message; box.hidden = false; }
   finally { button.disabled = false; }
+});
+
+$("#resolve-finding-form").addEventListener("submit", async (event) => {
+  event.preventDefault(); const form = event.currentTarget; const button = $("button[type=submit]", form); button.disabled = true;
+  try {
+    const investigationId = $("#resolve-finding-investigation-id").value;
+    const findingId = $("#resolve-finding-id").value;
+    const summary = $("#resolve-finding-summary").value.trim();
+    await api(`/investigations/${investigationId}/findings/${findingId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "resolved", resolution_summary: summary }),
+    });
+    $("#resolve-finding-dialog").close();
+    showToast("Hallazgo resuelto con resumen verificable.");
+    await renderInvestigation(investigationId);
+  } catch (error) {
+    const box = $(".dialog-error", form); box.textContent = error.message; box.hidden = false;
+  } finally { button.disabled = false; }
 });
 
 $("#search-form").addEventListener("submit", async (event) => {

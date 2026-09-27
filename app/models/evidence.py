@@ -5,6 +5,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Integer,
     JSON,
     Numeric,
     String,
@@ -87,6 +88,12 @@ class Evidence(BaseModel):
     )
     integrity_signature: Mapped[str] = mapped_column(
         String(64), nullable=False, index=True
+    )
+    integrity_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=2
+    )
+    integrity_key_id: Mapped[str] = mapped_column(
+        String(64), nullable=False
     )
     observed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

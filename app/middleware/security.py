@@ -28,6 +28,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
         response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        if request.url.path.startswith("/api/v1/"):
+            # Investigation data and authentication material must not be
+            # retained by browser or intermediary caches.
+            response.headers.setdefault("Cache-Control", "no-store")
+            response.headers.setdefault("Pragma", "no-cache")
         if not settings.debug and settings.auth_cookie_secure:
             response.headers["Strict-Transport-Security"] = (
                 "max-age=31536000; includeSubDomains"

@@ -25,7 +25,12 @@ from app.models.user import User
 from app.services.auth_session_service import (
     AuthSessionService,
 )
-from app.schemas.mfa import MfaDisableRequest, MfaSetupResponse, MfaVerifyRequest
+from app.schemas.mfa import (
+    MfaDisableRequest,
+    MfaSetupRequest,
+    MfaSetupResponse,
+    MfaVerifyRequest,
+)
 from app.services.mfa_service import MfaService
 from app.core.exceptions import InvalidCredentialsException
 from app.core.settings import settings
@@ -260,10 +265,11 @@ def revoke_session(
 
 @router.post("/mfa/setup", response_model=MfaSetupResponse)
 def setup_mfa(
+    request: MfaSetupRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     service: Annotated[MfaService, Depends(get_mfa_service)],
 ) -> MfaSetupResponse:
-    return service.setup(current_user)
+    return service.setup(current_user, request)
 
 
 @router.post("/mfa/confirm", status_code=status.HTTP_204_NO_CONTENT)

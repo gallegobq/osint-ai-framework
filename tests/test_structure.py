@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import yaml
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 
@@ -50,6 +53,11 @@ def test_lifecycle_routes_are_registered() -> None:
     assert "/api/v1/projects/{project_id}/investigations" in paths
     assert "/api/v1/investigations/{investigation_id}/evidence" in paths
     assert (
+        "/api/v1/investigations/{investigation_id}/evidence/"
+        "{evidence_id}/integrity"
+        in paths
+    )
+    assert (
         "/api/v1/investigations/{investigation_id}/collection-jobs"
         in paths
     )
@@ -59,3 +67,13 @@ def test_lifecycle_routes_are_registered() -> None:
     assert "/api/v1/investigations/{investigation_id}/report" in paths
     assert "/api/v1/projects/{project_id}/soc-knowledge/documents" in paths
     assert "/api/v1/projects/{project_id}/soc-knowledge/query" in paths
+
+
+def test_standalone_release_matches_documented_local_http_transport() -> None:
+    release = yaml.safe_load(
+        Path("docker-compose.release.yml").read_text(encoding="utf-8")
+    )
+    environment = release["services"]["api"]["environment"]
+
+    assert environment["AUTH_COOKIE_SECURE"] == "false"
+    assert environment["TRUST_PROXY_HEADERS"] == "false"

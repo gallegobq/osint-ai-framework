@@ -10,6 +10,7 @@ from app.repositories.user_repository import UserRepository
 from app.repositories.user_role_repository import (
     UserRoleRepository,
 )
+from app.services.audit_service import AuditService
 
 
 class UserRoleService:
@@ -22,15 +23,18 @@ class UserRoleService:
         user_repository: UserRepository,
         role_repository: RoleRepository,
         repository: UserRoleRepository,
+        audit: AuditService,
     ):
         self.user_repository = user_repository
         self.role_repository = role_repository
         self.repository = repository
+        self.audit = audit
 
     def assign_role(
         self,
         user_id: int,
         role_id: int,
+        actor_user_id: int,
     ) -> None:
 
         user = self.user_repository.get_by_id(user_id)
@@ -59,13 +63,20 @@ class UserRoleService:
                 role_id=role_id,
             )
         )
-
+        self.audit.record(
+            actor_user_id=actor_user_id,
+            action="users.roles.assigned",
+            resource_type="user",
+            resource_id=user_id,
+            data={"role_id": role_id},
+        )
         self.repository.commit()
 
     def remove_role(
         self,
         user_id: int,
         role_id: int,
+        actor_user_id: int,
     ) -> None:
 
         assignment = self.repository.get_by_user_and_role(
@@ -81,7 +92,13 @@ class UserRoleService:
         self.repository.delete(
             assignment
         )
-
+        self.audit.record(
+            actor_user_id=actor_user_id,
+            action="users.roles.removed",
+            resource_type="user",
+            resource_id=user_id,
+            data={"role_id": role_id},
+        )
         self.repository.commit()
 
     def get_roles(

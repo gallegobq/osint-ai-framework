@@ -18,6 +18,7 @@ from app.schemas.permission import (
 )
 
 from app.services.base_service import BaseService
+from app.services.audit_service import AuditService
 
 
 class PermissionService(BaseService[PermissionRead]):
@@ -28,12 +29,15 @@ class PermissionService(BaseService[PermissionRead]):
     def __init__(
         self,
         repository: PermissionRepository,
+        audit: AuditService,
     ):
         self.repository = repository
+        self.audit = audit
 
     def create_permission(
         self,
         data: PermissionCreate,
+        actor_user_id: int,
     ) -> PermissionRead:
 
         if self.repository.get_by_code(data.code):
@@ -73,6 +77,13 @@ class PermissionService(BaseService[PermissionRead]):
         try:
 
             self.repository.create(permission)
+            self.audit.record(
+                actor_user_id=actor_user_id,
+                action="permissions.create",
+                resource_type="permission",
+                resource_id=permission.id,
+                data={"code": permission.code},
+            )
             self.repository.commit()
 
             return self.to_schema(
@@ -87,6 +98,9 @@ class PermissionService(BaseService[PermissionRead]):
             raise ConflictException(
                 "Database integrity error."
             )
+        except Exception:
+            self.repository.rollback()
+            raise
 
     def get_permission(
         self,
@@ -122,6 +136,7 @@ class PermissionService(BaseService[PermissionRead]):
         self,
         permission_id: int,
         data: PermissionUpdate,
+        actor_user_id: int,
     ) -> PermissionRead:
 
         permission = self.repository.get_by_id(
@@ -144,7 +159,16 @@ class PermissionService(BaseService[PermissionRead]):
             )
 
         try:
-
+            self.audit.record(
+                actor_user_id=actor_user_id,
+                action="permissions.update",
+                resource_type="permission",
+                resource_id=permission.id,
+                data={
+                    "code": permission.code,
+                    "fields": sorted(data.model_fields_set),
+                },
+            )
             self.repository.commit()
 
             return self.to_schema(
@@ -159,10 +183,14 @@ class PermissionService(BaseService[PermissionRead]):
             raise ConflictException(
                 "Database integrity error."
             )
+        except Exception:
+            self.repository.rollback()
+            raise
 
     def delete_permission(
         self,
         permission_id: int,
+        actor_user_id: int,
     ) -> None:
 
         permission = self.repository.get_by_id(
@@ -179,5 +207,21 @@ class PermissionService(BaseService[PermissionRead]):
                 "System permissions cannot be deleted."
             )
 
-        self.repository.delete(permission)
-        self.repository.commit()
+        try:
+            self.repository.delete(permission)
+            self.audit.record(
+                actor_user_id=actor_user_id,
+                action="permissions.delete",
+                resource_type="permission",
+                resource_id=permission.id,
+                data={"code": permission.code},
+            )
+            self.repository.commit()
+        except IntegrityError as exc:
+            self.repository.rollback()
+            raise ConflictException(
+                "Permission cannot be deleted because it is in use."
+            ) from exc
+        except Exception:
+            self.repository.rollback()
+            raise

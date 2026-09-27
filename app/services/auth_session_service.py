@@ -14,6 +14,7 @@ from app.core.exceptions import (
     InvalidCredentialsException,
 )
 from app.repositories.user_repository import UserRepository
+from app.services.audit_service import AuditService
 from app.services.session_service import SessionService
 
 from app.models.user import User
@@ -29,9 +30,11 @@ class AuthSessionService:
         self,
         user_repository: UserRepository,
         session_service: SessionService,
+        audit_service: AuditService,
     ):
         self.user_repository = user_repository
         self.session_service = session_service
+        self.audit = audit_service
 
     def refresh(
         self,
@@ -104,7 +107,7 @@ class AuthSessionService:
                     str(user.id),
                 )
         
-        self.session_service.create_session(
+        new_session = self.session_service.create_session(
             user=user,
             refresh_token=refresh_token,
             jti=refresh_jti,
@@ -113,6 +116,13 @@ class AuthSessionService:
             ip_address=session.ip_address,
             user_agent=session.user_agent,
             commit=False,
+        )
+        self.audit.record(
+            actor_user_id=user.id,
+            action="auth.session.rotated",
+            resource_type="user_session",
+            resource_id=new_session.id,
+            data={"previous_session_id": session.id},
         )
         self.session_service.repository.commit()
         
@@ -129,9 +139,14 @@ class AuthSessionService:
         Revoca una sesión.
         """
 
-        self.session_service.revoke_session(
-            session,
+        self.session_service.revoke_session(session, commit=False)
+        self.audit.record(
+            actor_user_id=session.user_id,
+            action="auth.logout",
+            resource_type="user_session",
+            resource_id=session.id,
         )
+        self.session_service.repository.commit()
 
     def logout_all(
         self,
@@ -142,9 +157,14 @@ class AuthSessionService:
         del usuario.
         """
 
-        self.session_service.revoke_all_sessions(
-            user.id,
+        self.session_service.revoke_all_sessions(user.id, commit=False)
+        self.audit.record(
+            actor_user_id=user.id,
+            action="auth.sessions.revoked_all",
+            resource_type="user",
+            resource_id=user.id,
         )
+        self.session_service.repository.commit()
 
     def list_sessions(
         self,
@@ -164,4 +184,12 @@ class AuthSessionService:
         user: User,
         session_id: int,
     ) -> None:
-        self.session_service.revoke_owned_session(user.id, session_id)
+        session = self.session_service.get_owned_session(user.id, session_id)
+        self.session_service.revoke_session(session, commit=False)
+        self.audit.record(
+            actor_user_id=user.id,
+            action="auth.session.revoked",
+            resource_type="user_session",
+            resource_id=session.id,
+        )
+        self.session_service.repository.commit()

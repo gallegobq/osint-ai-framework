@@ -11,6 +11,7 @@ from app.schemas.permission import (
     PermissionUpdate,
 )
 from app.services.permission_service import PermissionService
+from app.models.user import User
 
 
 router = APIRouter(
@@ -43,16 +44,13 @@ def list_permissions(
     "",
     response_model=PermissionRead,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[
-        Depends(
-            require_permission(
-                Permissions.Permissions.CREATE,
-            )
-        )
-    ],
 )
 def create_permission(
     permission_data: PermissionCreate,
+    current_user: Annotated[
+        User,
+        Depends(require_permission(Permissions.Permissions.CREATE)),
+    ],
     service: Annotated[
         PermissionService,
         Depends(get_permission_service),
@@ -60,6 +58,7 @@ def create_permission(
 ) -> PermissionRead:
     return service.create_permission(
         data=permission_data,
+        actor_user_id=current_user.id,
     )
 
 @router.get(
@@ -85,17 +84,14 @@ def get_permission(
 @router.patch(
     "/{permission_id}",
     response_model=PermissionRead,
-    dependencies=[
-        Depends(
-            require_permission(
-                Permissions.Permissions.UPDATE,
-            )
-        )
-    ],
 )
 def update_permission(
     permission_id: int,
     permission_data: PermissionUpdate,
+    current_user: Annotated[
+        User,
+        Depends(require_permission(Permissions.Permissions.UPDATE)),
+    ],
     service: Annotated[
         PermissionService,
         Depends(get_permission_service),
@@ -104,24 +100,25 @@ def update_permission(
     return service.update_permission(
         permission_id=permission_id,
         data=permission_data,
+        actor_user_id=current_user.id,
     )
 
 @router.delete(
     "/{permission_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[
-        Depends(
-            require_permission(
-                Permissions.Permissions.DELETE,
-            )
-        )
-    ],
 )
 def delete_permission(
     permission_id: int,
+    current_user: Annotated[
+        User,
+        Depends(require_permission(Permissions.Permissions.DELETE)),
+    ],
     service: Annotated[
         PermissionService,
         Depends(get_permission_service),
     ],
 ) -> None:
-    service.delete_permission(permission_id)
+    service.delete_permission(
+        permission_id,
+        actor_user_id=current_user.id,
+    )

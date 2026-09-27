@@ -12,6 +12,7 @@ from app.schemas.evidence import (
     EntityRelationCreate,
     EntityRelationRead,
     EvidenceCreate,
+    EvidenceIntegrityVerification,
     EvidenceRead,
 )
 from app.services.evidence_service import EvidenceService
@@ -55,6 +56,26 @@ def list_evidence(
         kind=kind,
         search=search,
         limit=limit,
+    )
+
+
+@router.get(
+    "/{investigation_id}/evidence/{evidence_id}/integrity",
+    response_model=EvidenceIntegrityVerification,
+)
+def verify_evidence_integrity(
+    investigation_id: int,
+    evidence_id: int,
+    current_user: Annotated[
+        User,
+        Depends(require_permission(Permissions.Evidence.READ)),
+    ],
+    service: Annotated[EvidenceService, Depends(get_evidence_service)],
+) -> EvidenceIntegrityVerification:
+    return service.verify_integrity(
+        current_user,
+        investigation_id,
+        evidence_id,
     )
 
 

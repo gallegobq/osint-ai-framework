@@ -13,6 +13,7 @@ from app.middleware.cors import register_cors
 from app.middleware.logging import RequestContextMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.request_body_limit import RequestBodyLimitMiddleware
 from app.observability.metrics import MetricsMiddleware
 from app.core.settings import settings
 from app.core.logger import configure_logging
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RequestBodyLimitMiddleware)
     app.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=settings.trusted_hosts,

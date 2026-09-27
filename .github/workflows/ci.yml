@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: osint_db
+          POSTGRES_USER: osint
+          POSTGRES_PASSWORD: ci-database-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U osint -d osint_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: osint_db
+      POSTGRES_USER: osint
+      POSTGRES_PASSWORD: ci-database-password
+      REDIS_URL: redis://127.0.0.1:6379/0
+      RATE_LIMIT_ENABLED: "false"
+      CELERY_TASK_ALWAYS_EAGER: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.lock
+            requirements-dev.txt
+      - name: Prepare test configuration
+        run: cp .env.example .env
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+      - name: Compile
+        run: python -m compileall -q app alembic tests scripts
+      - name: Lint
+        run: ruff check --no-cache app tests scripts
+      - name: Verify migrations
+        run: alembic upgrade head
+      - name: Test
+        run: pytest -q
+
+  container-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan image, dependencies and repository secrets
+        shell: bash
+        run: bash scripts/security_scan.sh

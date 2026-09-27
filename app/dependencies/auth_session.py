@@ -7,9 +7,11 @@ from app.dependencies.database import get_db
 
 from app.repositories.user_repository import UserRepository
 from app.repositories.user_session_repository import UserSessionRepository
+from app.repositories.audit_repository import AuditRepository
 
 from app.services.session_service import SessionService
 from app.services.auth_session_service import AuthSessionService
+from app.services.audit_service import AuditService
 
 
 def get_auth_session_service(
@@ -38,4 +40,5 @@ def get_auth_session_service(
     return AuthSessionService(
         user_repository=user_repository,
         session_service=session_service,
+        audit_service=AuditService(AuditRepository(db)),
     )

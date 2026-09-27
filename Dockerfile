@@ -42,6 +42,7 @@ FROM base AS test
 COPY requirements-dev.txt ./
 RUN pip install --no-cache-dir -r requirements-dev.txt
 COPY alembic.ini ./
+COPY docker-compose.release.yml ./
 COPY alembic ./alembic
 COPY app ./app
 COPY pyproject.toml ./

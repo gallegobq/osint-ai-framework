@@ -3,11 +3,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 
 from app.auth.authorization import require_permission
+from app.auth.dependencies import get_current_user
 from app.core.permissions import Permissions
 from app.dependencies.user_roles import get_user_role_service
 from app.schemas.role import RoleRead
 from app.services.user_role_service import UserRoleService
 from app.schemas.user_role import UserRoleAssign
+from app.models.user import User
 
 router = APIRouter(
     prefix="/users",
@@ -51,6 +53,7 @@ def get_user_roles(
 def assign_role(
     user_id: int,
     data: UserRoleAssign,
+    current_user: Annotated[User, Depends(get_current_user)],
     service: Annotated[
         UserRoleService,
         Depends(get_user_role_service),
@@ -59,6 +62,7 @@ def assign_role(
     service.assign_role(
         user_id=user_id,
         role_id=data.role_id,
+        actor_user_id=current_user.id,
     )
 
 @router.delete(
@@ -75,6 +79,7 @@ def assign_role(
 def remove_role(
     user_id: int,
     role_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
     service: Annotated[
         UserRoleService,
         Depends(get_user_role_service),
@@ -83,4 +88,5 @@ def remove_role(
     service.remove_role(
         user_id=user_id,
         role_id=role_id,
+        actor_user_id=current_user.id,
     )

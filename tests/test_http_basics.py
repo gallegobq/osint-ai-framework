@@ -14,6 +14,8 @@ def test_liveness_and_security_headers() -> None:
     assert response.headers["content-security-policy"].startswith(
         "default-src 'self'"
     )
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["pragma"] == "no-cache"
     assert response.headers["x-request-id"]
 
 
@@ -54,6 +56,10 @@ def test_local_frontend_is_served_with_its_assets() -> None:
     assert "operation_mode: operationMode" in script.text
     assert '"X-Refresh-Token-Transport": "cookie"' in script.text
     assert '$("#search-schedule-name").required = event.target.checked' in script.text
+    assert "/entities`)" in script.text
+    assert "/relations`)" in script.text
+    assert "Mapa de relaciones trazables" in script.text
+    assert 'data-action="focus-evidence"' in script.text
     assert "localStorage" not in script.text
     assert stylesheet.status_code == 200
     assert stylesheet.headers["content-type"].startswith("text/css")

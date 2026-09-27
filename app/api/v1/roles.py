@@ -5,11 +5,13 @@ from fastapi import Depends
 from fastapi import status
 
 from app.auth.authorization import require_permission
+from app.auth.dependencies import get_current_user
 from app.core.permissions import Permissions
 from app.dependencies.roles import get_role_service
 from app.schemas.role import RoleCreate
 from app.schemas.role import RoleRead
 from app.services.role_service import RoleService
+from app.models.user import User
 
 from app.schemas.role import RoleUpdate
 
@@ -49,12 +51,13 @@ def list_roles(
 )
 def create_role(
     role_data: RoleCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
     service: Annotated[
         RoleService,
         Depends(get_role_service),
     ],
 ) -> RoleRead:
-    return service.create_role(role_data)
+    return service.create_role(role_data, actor_user_id=current_user.id)
 
 
 @router.get(
@@ -87,6 +90,7 @@ def get_role(
 def update_role(
     role_id: int,
     role_data: RoleUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
     service: Annotated[
         RoleService,
         Depends(get_role_service),
@@ -95,6 +99,7 @@ def update_role(
     return service.update_role(
         role_id=role_id,
         data=role_data,
+        actor_user_id=current_user.id,
     )
     
 @router.delete(
@@ -108,9 +113,10 @@ def update_role(
 )
 def delete_role(
     role_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
     service: Annotated[
         RoleService,
         Depends(get_role_service),
     ],
 ) -> None:
-    service.delete_role(role_id)
+    service.delete_role(role_id, actor_user_id=current_user.id)

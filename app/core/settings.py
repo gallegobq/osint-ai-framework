@@ -62,6 +62,11 @@ class Settings(BaseSettings):
         alias="SECRET_KEY",
         min_length=32,
     )
+    evidence_signing_key: SecretStr | None = Field(
+        default=None,
+        alias="EVIDENCE_SIGNING_KEY",
+        min_length=32,
+    )
 
     jwt_algorithm: Literal["HS256"] = Field(alias="JWT_ALGORITHM")
 
@@ -114,8 +119,39 @@ class Settings(BaseSettings):
     rate_limit_fail_closed: bool = Field(
         default=True, alias="RATE_LIMIT_FAIL_CLOSED"
     )
+    rate_limit_user_enabled: bool = Field(
+        default=True, alias="RATE_LIMIT_USER_ENABLED"
+    )
+    rate_limit_user_requests: int = Field(
+        default=240, alias="RATE_LIMIT_USER_REQUESTS", ge=10, le=10000
+    )
+    rate_limit_user_window_seconds: int = Field(
+        default=60, alias="RATE_LIMIT_USER_WINDOW_SECONDS", ge=1, le=3600
+    )
+    readiness_rate_limit_requests: int = Field(
+        default=30,
+        alias="READINESS_RATE_LIMIT_REQUESTS",
+        ge=1,
+        le=1000,
+    )
+    readiness_rate_limit_window_seconds: int = Field(
+        default=60,
+        alias="READINESS_RATE_LIMIT_WINDOW_SECONDS",
+        ge=1,
+        le=3600,
+    )
     trust_proxy_headers: bool = Field(
         default=False, alias="TRUST_PROXY_HEADERS"
+    )
+    trusted_proxy_networks: list[str] = Field(
+        default_factory=list,
+        alias="TRUSTED_PROXY_NETWORKS",
+    )
+    max_request_body_bytes: int = Field(
+        default=2_000_000,
+        alias="MAX_REQUEST_BODY_BYTES",
+        ge=1024,
+        le=100_000_000,
     )
     metrics_enabled: bool = Field(default=False, alias="METRICS_ENABLED")
     metrics_token: SecretStr | None = Field(
@@ -314,6 +350,11 @@ class Settings(BaseSettings):
         if self.metrics_enabled and not metrics_token and not self.debug:
             raise ValueError(
                 "METRICS_TOKEN is required when METRICS_ENABLED=true outside debug."
+            )
+        if self.trust_proxy_headers and not self.trusted_proxy_networks:
+            raise ValueError(
+                "TRUSTED_PROXY_NETWORKS is required when "
+                "TRUST_PROXY_HEADERS=true."
             )
         return self
 

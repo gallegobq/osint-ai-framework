@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from app.dependencies.database import get_db
 from app.repositories.role_repository import RoleRepository
 from app.repositories.user_role_repository import UserRoleRepository
+from app.repositories.audit_repository import AuditRepository
+from app.services.audit_service import AuditService
 from app.services.role_service import RoleService
 
 
@@ -22,4 +24,5 @@ def get_role_service(
     return RoleService(
         repository=role_repository,
         user_role_repository=user_role_repository,
+        audit=AuditService(AuditRepository(db)),
     )

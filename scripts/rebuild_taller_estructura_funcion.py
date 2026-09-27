@@ -3,27 +3,21 @@ from pathlib import Path
 from PIL import Image
 from docx import Document
 from docx.enum.section import WD_SECTION
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
 
 from build_taller_bioquimica import (
     ASSETS,
     INK,
-    MUTED,
     NAVY,
-    ORANGE,
     OUT,
     PALE_GRAY,
     PALE_ORANGE,
-    PALE_TEAL,
     STUDENT,
     TEACHER,
-    TEAL,
     add_answer,
     add_callout,
     add_col_break,
     add_label_line,
-    add_page_field,
     add_picture,
     add_question,
     add_response_lines,

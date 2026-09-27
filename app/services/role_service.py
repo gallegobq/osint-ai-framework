@@ -17,6 +17,7 @@ from app.schemas.role import (
 
 from app.services.base_service import BaseService
 from app.repositories.user_role_repository import UserRoleRepository
+from app.services.audit_service import AuditService
 
 class RoleService(BaseService[RoleRead]):
     """
@@ -27,13 +28,16 @@ class RoleService(BaseService[RoleRead]):
             self,
             repository: RoleRepository,
             user_role_repository: UserRoleRepository,
+            audit: AuditService,
         ):
             self.repository = repository
             self.user_role_repository = user_role_repository
+            self.audit = audit
 
     def create_role(
         self,
         data: RoleCreate,
+        actor_user_id: int,
     ) -> RoleRead:
 
         if self.repository.get_by_name(data.name):
@@ -50,6 +54,13 @@ class RoleService(BaseService[RoleRead]):
         try:
 
             self.repository.create(role)
+            self.audit.record(
+                actor_user_id=actor_user_id,
+                action="roles.create",
+                resource_type="role",
+                resource_id=role.id,
+                data={"name": role.name},
+            )
             self.repository.commit()
 
             return self.to_schema(
@@ -95,6 +106,7 @@ class RoleService(BaseService[RoleRead]):
         self,
         role_id: int,
         data: RoleUpdate,
+        actor_user_id: int,
     ) -> RoleRead:
     
         role = self.repository.get_by_id(role_id)
@@ -126,6 +138,13 @@ class RoleService(BaseService[RoleRead]):
             role.description = data.description
     
         try:
+            self.audit.record(
+                actor_user_id=actor_user_id,
+                action="roles.update",
+                resource_type="role",
+                resource_id=role.id,
+                data={"fields": sorted(data.model_fields_set)},
+            )
             self.repository.commit()
     
             return self.to_schema(
@@ -143,6 +162,7 @@ class RoleService(BaseService[RoleRead]):
     def delete_role(
                     self,
                     role_id: int,
+                    actor_user_id: int,
                 ) -> None:
                 
                     role = self.repository.get_by_id(role_id)
@@ -166,6 +186,13 @@ class RoleService(BaseService[RoleRead]):
                 
                     try:
                         self.repository.delete(role)
+                        self.audit.record(
+                            actor_user_id=actor_user_id,
+                            action="roles.delete",
+                            resource_type="role",
+                            resource_id=role_id,
+                            data={"name": role.name},
+                        )
                         self.repository.commit()
                 
                     except IntegrityError:

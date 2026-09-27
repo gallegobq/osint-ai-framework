@@ -6,6 +6,10 @@ class MfaSetupResponse(BaseModel):
     provisioning_uri: str
 
 
+class MfaSetupRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+
+
 class MfaVerifyRequest(BaseModel):
     code: str = Field(pattern=r"^[0-9]{6}$")
 

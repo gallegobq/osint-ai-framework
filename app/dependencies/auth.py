@@ -7,10 +7,12 @@ from app.dependencies.database import get_db
 
 from app.repositories.user_repository import UserRepository
 from app.repositories.user_session_repository import UserSessionRepository
+from app.repositories.audit_repository import AuditRepository
 
 from app.services.session_service import SessionService
 from app.auth.service import AuthenticationService
 from app.services.mfa_service import MfaService
+from app.services.audit_service import AuditService
 
 
 def get_auth_service(
@@ -31,6 +33,7 @@ def get_auth_service(
     return AuthenticationService(
         repository=user_repository,
         session_service=session_service,
+        audit_service=AuditService(AuditRepository(db)),
     )
 
 
@@ -43,4 +46,5 @@ def get_mfa_service(
     return MfaService(
         users=UserRepository(db),
         sessions=SessionService(UserSessionRepository(db)),
+        audit=AuditService(AuditRepository(db)),
     )

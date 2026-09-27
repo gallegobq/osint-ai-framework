@@ -83,8 +83,10 @@ services:
       POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
       OLLAMA_URL: http://ollama:11434
-      AUTH_COOKIE_SECURE: "true"
-      TRUST_PROXY_HEADERS: "true"
+      # The standalone bundle is bound to localhost and opened over HTTP.
+      # Deployments behind TLS/proxy must override these values explicitly.
+      AUTH_COOKIE_SECURE: "false"
+      TRUST_PROXY_HEADERS: "false"
     ports:
       - "127.0.0.1:${PORT:-8000}:8000"
     networks:
