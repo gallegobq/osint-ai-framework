@@ -45,6 +45,7 @@ jobs:
       POSTGRES_DB: osint_db
       POSTGRES_USER: osint
       POSTGRES_PASSWORD: ci-database-password
+      SECRET_KEY: ci-only-secret-key-for-migrations-and-tests
       REDIS_URL: redis://127.0.0.1:6379/0
       RATE_LIMIT_ENABLED: "false"
       CELERY_TASK_ALWAYS_EAGER: "true"
