@@ -54,8 +54,8 @@ el estado para diagnóstico.
 - [ ] Retención, eliminación y legal hold están definidos.
 - [ ] Fuentes OSINT, términos, jurisdicción y base legal están aprobados.
 - [ ] Prometheus recolecta `/metrics`; alertas, logs y respuesta tienen responsables.
-- [ ] RPO, RTO, capacidad y disponibilidad fueron aceptados. La prueba local
-  actual no cumple el umbral p95 de 1000 ms.
+- [ ] RPO, RTO, capacidad y disponibilidad fueron aceptados. Liveness y una
+  lectura administrativa cumplen p95 de 1000 ms; faltan roles y datos fijos.
 - [ ] Se realizó una prueba de autorización por cada rol real.
 
 ## Rollback

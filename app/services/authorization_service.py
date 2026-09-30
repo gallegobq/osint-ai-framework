@@ -17,39 +17,17 @@ class AuthorizationService:
         self,
         user_id: int,
     ) -> set[str]:
-
-        user = self.user_repository.get_by_id(
-            user_id
-        )
-
-        if user is None:
-            return set()
-
-        permissions: set[str] = set()
-
-        for user_role in user.role_assignments:
-
-            role = user_role.role
-
-            for role_permission in role.permission_assignments:
-
-                permissions.add(
-                    role_permission.permission.code
-                )
-
-        return permissions
+        return self.user_repository.get_permission_codes(user_id)
 
     def has_permission(
         self,
         user_id: int,
         permission_code: str,
     ) -> bool:
-
-        permissions = self.get_permissions(
-            user_id
+        return self.user_repository.has_permission(
+            user_id,
+            permission_code,
         )
-
-        return permission_code in permissions
 
     def has_any_permission(
         self,

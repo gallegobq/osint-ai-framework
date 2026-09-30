@@ -112,3 +112,29 @@ procedimiento de backup/restore.
 
 El backup/restore ya no está pendiente en el entorno local actual; sí continúa
 pendiente su automatización externa y la aceptación formal de RPO/RTO.
+
+## Validación de rendimiento — 2026-09-29
+
+El medidor usa `127.0.0.1` por defecto porque Docker publica la API únicamente
+en IPv4. En Windows, `localhost` también puede resolverse a `::1`; el fallback
+a IPv4 añadía cerca de dos segundos por solicitud y produjo el resultado de
+agosto que parecía una regresión del servidor.
+
+La medición reproducible actual se ejecuta con calentamiento, tres series y un
+artefacto JSON local:
+
+```powershell
+python .\scripts\load_test.py `
+  --requests 500 `
+  --concurrency 20 `
+  --warmup 50 `
+  --repetitions 3 `
+  --json-output .\tmp\benchmark-health.json
+```
+
+El 2026-09-29 procesó 1.500 solicitudes sin errores, con p95 mediano de
+321,59 ms y 132,79 rps medianos. También aprobaron 137 pruebas y Ruff. Este
+escenario mide liveness y middleware. Una lectura autenticada de proyectos
+procesó 100 solicitudes sin errores, con p95 de 281,42 ms y 67,44 rps. Aún
+falta repetir rutas de negocio con usuario no superadministrador y un dataset
+sintético de cardinalidad fija antes de aceptar capacidad.

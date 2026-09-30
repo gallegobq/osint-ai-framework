@@ -1,7 +1,7 @@
 import hashlib
 
 from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.evidence import Evidence, EvidenceSource
 from app.repositories.base_repository import BaseRepository
@@ -19,8 +19,10 @@ class EvidenceRepository(BaseRepository[Evidence]):
         search: str | None = None,
         limit: int = 200,
     ) -> list[Evidence]:
-        statement = select(Evidence).where(
-            Evidence.investigation_id == investigation_id
+        statement = (
+            select(Evidence)
+            .options(joinedload(Evidence.source))
+            .where(Evidence.investigation_id == investigation_id)
         )
         if kind is not None:
             statement = statement.where(Evidence.kind == kind)

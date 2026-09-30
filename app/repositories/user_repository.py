@@ -3,6 +3,8 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.permission import Permission
+from app.models.role_permission import RolePermission
 from app.models.user import User
 from app.models.user_role import UserRole
 from app.repositories.base_repository import BaseRepository
@@ -85,6 +87,63 @@ class UserRepository(BaseRepository[User]):
         )
 
         return self.db.scalar(statement)
+
+    def get_permission_codes(
+        self,
+        user_id: int,
+    ) -> set[str]:
+        """Return effective permission codes with one joined query."""
+        statement = (
+            select(Permission.code)
+            .select_from(UserRole)
+            .join(User, User.id == UserRole.user_id)
+            .join(
+                RolePermission,
+                RolePermission.role_id == UserRole.role_id,
+            )
+            .join(
+                Permission,
+                Permission.id == RolePermission.permission_id,
+            )
+            .where(
+                UserRole.user_id == user_id,
+                User.deleted_at.is_(None),
+            )
+            .distinct()
+        )
+
+        return set(self.db.scalars(statement).all())
+
+    def has_permission(
+        self,
+        user_id: int,
+        permission_code: str,
+    ) -> bool:
+        """Check an effective permission without loading the RBAC graph."""
+        permission_exists = (
+            select(RolePermission.id)
+            .select_from(UserRole)
+            .join(User, User.id == UserRole.user_id)
+            .join(
+                RolePermission,
+                RolePermission.role_id == UserRole.role_id,
+            )
+            .join(
+                Permission,
+                Permission.id == RolePermission.permission_id,
+            )
+            .where(
+                UserRole.user_id == user_id,
+                User.deleted_at.is_(None),
+                Permission.code == permission_code,
+            )
+        )
+
+        return bool(
+            self.db.scalar(
+                select(permission_exists.exists())
+            )
+        )
 
     def get_by_id_including_deleted(
         self,

@@ -46,6 +46,11 @@ def main() -> None:
                 "title": f"Smoke Investigation {suffix}",
                 "kind": "domain",
                 "priority": "low",
+                "jurisdiction": "Synthetic test environment",
+                "legal_basis": (
+                    "Authorized automated verification using synthetic data."
+                ),
+                "data_classification": "internal",
             },
         )
         investigation_response.raise_for_status()

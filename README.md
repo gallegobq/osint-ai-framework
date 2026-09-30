@@ -197,6 +197,7 @@ docker compose --profile test run --rm tests python scripts/probe_extended_colle
 - [Auditoría de recuperación](docs/audit-2026-08-15.md)
 - [Evidencia de validación runtime](docs/runtime-validation-2026-08-15.md)
 - [Validación del incremento SOC](docs/runtime-validation-2026-08-16.md)
+- [Validación de rendimiento y consultas](docs/runtime-validation-2026-09-29.md)
 - [Registros ADR](docs/adr/README.md)
 
 ## Límites actuales
