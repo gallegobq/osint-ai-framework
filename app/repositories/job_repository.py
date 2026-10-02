@@ -1,9 +1,17 @@
+import hashlib
+import json
 from datetime import datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from app.models.job import AnalysisJob, CollectionJob, SearchRun
+from app.models.job import (
+    AnalysisJob,
+    CollectionJob,
+    SearchDiscovery,
+    SearchDiscoveryEdge,
+    SearchRun,
+)
 from app.repositories.base_repository import BaseRepository
 
 
@@ -79,6 +87,112 @@ class SearchRunRepository(BaseRepository[SearchRun]):
         self.db.commit()
         self.db.expire_all()
         return result.rowcount == 1
+
+
+class SearchDiscoveryRepository(BaseRepository[SearchDiscovery]):
+    def __init__(self, db: Session):
+        super().__init__(SearchDiscovery, db)
+
+    def get_or_create(
+        self,
+        *,
+        search_run_id: int,
+        target_type: str,
+        target_value: str,
+        depth: int,
+    ) -> tuple[SearchDiscovery, bool, bool]:
+        value_hash = hashlib.sha256(target_value.encode("utf-8")).hexdigest()
+        existing = self.db.scalar(
+            select(SearchDiscovery).where(
+                SearchDiscovery.search_run_id == search_run_id,
+                SearchDiscovery.target_type == target_type,
+                SearchDiscovery.value_hash == value_hash,
+            )
+        )
+        if existing is not None:
+            depth_lowered = depth < existing.min_depth
+            if existing.target_value != target_value:
+                raise RuntimeError("Discovery identity hash collision.")
+            if depth_lowered:
+                existing.min_depth = depth
+                self.db.flush()
+            return existing, False, depth_lowered
+        return (
+            self.create(
+                SearchDiscovery(
+                    search_run_id=search_run_id,
+                    target_type=target_type,
+                    target_value=target_value,
+                    value_hash=value_hash,
+                    min_depth=depth,
+                )
+            ),
+            True,
+            False,
+        )
+
+    def add_edge(
+        self,
+        *,
+        search_run_id: int,
+        parent_discovery_id: int | None,
+        child_discovery_id: int,
+        collection_job_id: int | None,
+        evidence_id: int | None,
+        relation: str,
+        depth: int,
+    ) -> tuple[SearchDiscoveryEdge, bool]:
+        identity = {
+            "child_discovery_id": child_discovery_id,
+            "collection_job_id": collection_job_id,
+            "depth": depth,
+            "evidence_id": evidence_id,
+            "parent_discovery_id": parent_discovery_id,
+            "relation": relation,
+            "search_run_id": search_run_id,
+        }
+        edge_hash = hashlib.sha256(
+            json.dumps(identity, sort_keys=True, separators=(",", ":")).encode(
+                "utf-8"
+            )
+        ).hexdigest()
+        existing = self.db.scalar(
+            select(SearchDiscoveryEdge).where(
+                SearchDiscoveryEdge.search_run_id == search_run_id,
+                SearchDiscoveryEdge.edge_hash == edge_hash,
+            )
+        )
+        if existing is not None:
+            return existing, False
+        edge = SearchDiscoveryEdge(edge_hash=edge_hash, **identity)
+        self.db.add(edge)
+        self.db.flush()
+        self.db.refresh(edge)
+        return edge, True
+
+    def list_nodes(self, search_run_id: int) -> list[SearchDiscovery]:
+        statement = (
+            select(SearchDiscovery)
+            .where(SearchDiscovery.search_run_id == search_run_id)
+            .order_by(
+                SearchDiscovery.min_depth.asc(),
+                SearchDiscovery.target_type.asc(),
+                SearchDiscovery.target_value.asc(),
+                SearchDiscovery.id.asc(),
+            )
+        )
+        return list(self.db.scalars(statement).all())
+
+    def list_edges(self, search_run_id: int) -> list[SearchDiscoveryEdge]:
+        statement = (
+            select(SearchDiscoveryEdge)
+            .where(SearchDiscoveryEdge.search_run_id == search_run_id)
+            .order_by(
+                SearchDiscoveryEdge.depth.asc(),
+                SearchDiscoveryEdge.id.asc(),
+            )
+        )
+        return list(self.db.scalars(statement).all())
 
 
 class AnalysisJobRepository(BaseRepository[AnalysisJob]):

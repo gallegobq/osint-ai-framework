@@ -7,7 +7,13 @@ from app.models.user_session import UserSession
 from app.models.project import Project, ProjectMember
 from app.models.investigation import Investigation, InvestigationTask
 from app.models.evidence import Evidence, EvidenceSource, Entity, EntityRelation
-from app.models.job import AnalysisJob, CollectionJob, SearchRun
+from app.models.job import (
+    AnalysisJob,
+    CollectionJob,
+    SearchDiscovery,
+    SearchDiscoveryEdge,
+    SearchRun,
+)
 from app.models.audit_event import AuditEvent
 from app.models.soc import Finding, SearchSchedule
 from app.models.knowledge import KnowledgeChunk, KnowledgeDocument
@@ -31,6 +37,8 @@ __all__ = [
     "Role",
     "RolePermission",
     "SearchRun",
+    "SearchDiscovery",
+    "SearchDiscoveryEdge",
     "SearchSchedule",
     "User",
     "UserRole",

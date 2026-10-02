@@ -6,8 +6,14 @@ from app.core.settings import settings
 from app.models.job import SearchRun
 from app.models.user import User
 from app.osint.targets import infer_targets, normalize_target
-from app.repositories.job_repository import SearchRunRepository
+from app.repositories.job_repository import (
+    SearchDiscoveryRepository,
+    SearchRunRepository,
+)
 from app.schemas.orchestration import (
+    SearchDiscoveryEdgeRead,
+    SearchDiscoveryGraphRead,
+    SearchDiscoveryRead,
     SearchRunCreate,
     SearchRunRead,
     SearchRunStatus,
@@ -28,6 +34,7 @@ class OrchestrationService:
         dispatcher: JobDispatcher,
     ):
         self.repository = repository
+        self.discoveries = SearchDiscoveryRepository(repository.db)
         self.investigations = investigations
         self.audit = audit_service
         self.dispatcher = dispatcher
@@ -46,6 +53,14 @@ class OrchestrationService:
         if data.max_tools > settings.orchestrator_max_tools:
             raise BadRequestException(
                 "max_tools exceeds the configured orchestration limit."
+            )
+        if data.discovery_max_depth > settings.orchestrator_max_discovery_depth:
+            raise BadRequestException(
+                "discovery_max_depth exceeds the configured orchestration limit."
+            )
+        if data.discovery_max_events > settings.orchestrator_max_discovery_events:
+            raise BadRequestException(
+                "discovery_max_events exceeds the configured orchestration limit."
             )
         targets = (
             [
@@ -79,6 +94,9 @@ class OrchestrationService:
                 profile=data.profile.value,
                 max_tools=data.max_tools,
                 allow_active=data.allow_active,
+                follow_discoveries=data.follow_discoveries,
+                discovery_max_depth=data.discovery_max_depth,
+                discovery_max_events=data.discovery_max_events,
                 policy={
                     "authorization_confirmed": True,
                     "scope_note": data.scope_note,
@@ -88,6 +106,12 @@ class OrchestrationService:
                     ),
                     "operation_mode": investigation.operation_mode,
                     "profile": data.profile.value,
+                    "discovery": {
+                        "enabled": data.follow_discoveries,
+                        "max_depth": data.discovery_max_depth,
+                        "max_events": data.discovery_max_events,
+                        "active_collectors": False,
+                    },
                     "active_testing_authorized": (
                         investigation.active_testing_authorized
                     ),
@@ -116,6 +140,9 @@ class OrchestrationService:
                 "allow_active": data.allow_active,
                 "operation_mode": investigation.operation_mode,
                 "profile": data.profile.value,
+                "follow_discoveries": data.follow_discoveries,
+                "discovery_max_depth": data.discovery_max_depth,
+                "discovery_max_events": data.discovery_max_events,
             },
         )
         self.repository.commit()
@@ -150,3 +177,23 @@ class OrchestrationService:
             SearchRunRead.model_validate(run)
             for run in self.repository.list_by_investigation(investigation_id)
         ]
+
+    def discovery_graph(
+        self,
+        actor: User,
+        run_id: int,
+    ) -> SearchDiscoveryGraphRead:
+        run = self.repository.get_by_id(run_id)
+        if run is None:
+            raise NotFoundException("Search run")
+        self.investigations.get_model(actor, run.investigation_id)
+        return SearchDiscoveryGraphRead(
+            nodes=[
+                SearchDiscoveryRead.model_validate(node)
+                for node in self.discoveries.list_nodes(run_id)
+            ],
+            edges=[
+                SearchDiscoveryEdgeRead.model_validate(edge)
+                for edge in self.discoveries.list_edges(run_id)
+            ],
+        )

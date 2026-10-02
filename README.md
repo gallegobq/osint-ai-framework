@@ -22,6 +22,8 @@ intercambiables.
 - Cinco perfiles de orquestación (`auto`, `passive`, `footprint`,
   `investigate`, `all`) con selección declarativa, planes auditables y
   fallback determinista.
+- Grafo de descubrimientos con observables tipados, aristas citables a
+  evidencia y deduplicación; el encadenamiento pasivo es opt-in y acotado.
 - Análisis con Ollama: resumen, entidades, relaciones y sentimiento.
 - Linterna SOC con RAG local por proyecto: documentos trazables, embeddings,
   recuperación híbrida, abstención y respuestas con citas validadas.

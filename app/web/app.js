@@ -392,7 +392,9 @@ function focusEvidence(evidenceId) {
 
 function runItem(run) {
   const target = run.targets?.[0];
-  return `<article class="run-item"><header><span><span class="badge ${run.status}">${label(run.status)}</span> <span class="badge">${label(run.profile)}</span></span><small>${formatDate(run.created_at)}</small></header><p><strong>${escapeHtml(target?.value || "Objetivo")}</strong><br />${escapeHtml(truncate(run.objective, 100))}</p>${run.error ? `<p class="form-error">${escapeHtml(truncate(run.error, 130))}</p>` : ""}</article>`;
+  const discoveryCount = Number(run.result_summary?.discovery_nodes || 0);
+  const discoveryNote = discoveryCount > 1 ? `<small>${discoveryCount} observables en el grafo · ${Number(run.result_summary?.followed_discovery_jobs || 0)} trabajos derivados</small>` : "";
+  return `<article class="run-item"><header><span><span class="badge ${run.status}">${label(run.status)}</span> <span class="badge">${label(run.profile)}</span></span><small>${formatDate(run.created_at)}</small></header><p><strong>${escapeHtml(target?.value || "Objetivo")}</strong><br />${escapeHtml(truncate(run.objective, 100))}</p>${discoveryNote}${run.error ? `<p class="form-error">${escapeHtml(truncate(run.error, 130))}</p>` : ""}</article>`;
 }
 
 function openDialog(id) {
@@ -686,6 +688,7 @@ $("#search-form").addEventListener("submit", async (event) => {
     const targetType = $("#search-target-type").value;
     const targetValue = $("#search-target-value").value.trim();
     const profile = $("#search-profile").value;
+    const followDiscoveries = $("#search-follow-discoveries").checked;
     const allowActive = !$("#search-active-panel").hidden && $("#search-allow-active").checked;
     const scheduled = $("#search-scheduled").checked;
     if ((targetType && !targetValue) || (!targetType && targetValue)) throw new Error("Selecciona tipo y valor, o deja ambos vacíos para la detección automática.");
@@ -694,9 +697,9 @@ $("#search-form").addEventListener("submit", async (event) => {
     if (scheduled) {
       if (!targets.length) throw new Error("Una búsqueda programada requiere un objetivo explícito.");
       if ($("#search-scope-note").value.trim().length < 10) throw new Error("Describe el alcance autorizado de la vigilancia.");
-      await api(`/investigations/${investigationId}/search-schedules`, { method: "POST", body: JSON.stringify({ name: $("#search-schedule-name").value.trim(), objective: $("#search-objective").value.trim(), targets, profile, max_tools: 40, interval_minutes: Number($("#search-schedule-interval").value), authorization_confirmed: $("#search-authorization").checked, authorization_scope: $("#search-scope-note").value.trim(), enabled: true }) });
+      await api(`/investigations/${investigationId}/search-schedules`, { method: "POST", body: JSON.stringify({ name: $("#search-schedule-name").value.trim(), objective: $("#search-objective").value.trim(), targets, profile, follow_discoveries: followDiscoveries, discovery_max_depth: 1, discovery_max_events: 25, max_tools: 40, interval_minutes: Number($("#search-schedule-interval").value), authorization_confirmed: $("#search-authorization").checked, authorization_scope: $("#search-scope-note").value.trim(), enabled: true }) });
     } else {
-      await api(`/investigations/${investigationId}/search-runs`, { method: "POST", body: JSON.stringify({ objective: $("#search-objective").value.trim(), targets, profile, max_tools: 40, allow_active: allowActive, authorization_confirmed: $("#search-authorization").checked, scope_note: $("#search-scope-note").value.trim() || null }) });
+      await api(`/investigations/${investigationId}/search-runs`, { method: "POST", body: JSON.stringify({ objective: $("#search-objective").value.trim(), targets, profile, follow_discoveries: followDiscoveries, discovery_max_depth: 1, discovery_max_events: 25, max_tools: 40, allow_active: allowActive, authorization_confirmed: $("#search-authorization").checked, scope_note: $("#search-scope-note").value.trim() || null }) });
     }
     $("#search-dialog").close(); showToast(scheduled ? "Vigilancia pasiva programada." : "Búsqueda enviada al orquestador local."); await renderInvestigation(investigationId);
   } catch (error) { const box = $(".dialog-error", form); box.textContent = error.message; box.hidden = false; } finally { button.disabled = false; }

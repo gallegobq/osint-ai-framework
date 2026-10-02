@@ -56,6 +56,8 @@ debes agregar el dominio real sin retirar los nombres internos que utilices.
 | `OSINT_USER_AGENT` | Identificador local | User-Agent para proveedores públicos |
 | `OSINT_SEARCH_LANGUAGE` | `es` | Idioma de Wikipedia/Wikidata/Google Books |
 | `ORCHESTRATOR_MAX_TOOLS` | `40` | Límite operativo por búsqueda |
+| `ORCHESTRATOR_MAX_DISCOVERY_DEPTH` | `2` | Profundidad máxima permitida al seguir observables derivados |
+| `ORCHESTRATOR_MAX_DISCOVERY_EVENTS` | `50` | Máximo de eventos derivados persistidos por búsqueda |
 | `ORCHESTRATOR_REQUIRE_OLLAMA` | `false` | Si `true`, desactiva fallback determinista |
 | `LLM_PROVIDER` | `ollama` | Adaptador de inferencia habilitado |
 | `OLLAMA_URL` | `http://localhost:11434` | Endpoint Ollama; Compose lo sobrescribe |

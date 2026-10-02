@@ -32,6 +32,7 @@ def main() -> int:
     assert {"cve_nvd", "cve_cisa_kev", "cve_epss", "email_domain_dns"} <= by_name.keys()
     assert "hash" in by_name["hash_virustotal"]["target_types"]
     assert all(item["profiles"] for item in collectors)
+    assert by_name["domain_dns"]["emitted_target_types"] == ["ip"]
     _, profiles = request("/api/v1/search-profiles", token=token)
     assert {item["name"] for item in profiles} == {
         "auto",
@@ -50,6 +51,7 @@ def main() -> int:
         "/api/v1/investigations/{investigation_id}/report.stix.json",
         "/api/v1/investigations/{investigation_id}/report.ndjson",
         "/api/v1/search-profiles",
+        "/api/v1/search-runs/{run_id}/discoveries",
     }
     assert expected <= paths.keys()
     print(

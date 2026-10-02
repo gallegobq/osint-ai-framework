@@ -10,8 +10,10 @@ Cada colector implementa:
 - `passive`, `requires_api_key` y `availability()`: política y estado operativo.
 - `profiles`: casos de uso declarados (`footprint` o `investigate`); `passive`,
   `auto` y `all` se calculan desde el contrato y la política de ejecución.
+- `emitted_target_types`: tipos de observable que el adaptador puede descubrir.
 - `validate_query(query)`: valida y normaliza entrada no confiable.
-- `collect(query)`: devuelve `CollectedItem` sin conocer PostgreSQL.
+- `collect(query)`: devuelve `CollectedItem` sin conocer PostgreSQL; cada
+  descubrimiento explícito usa `DiscoveredTarget` con tipo, valor y relación.
 
 El worker convierte cada `CollectedItem` en evidencia mediante el mismo
 `EvidenceService` usado por la API. Esto conserva deduplicación, auditoría y
@@ -32,8 +34,8 @@ autorización.
 | Usuario | GitHub, repositorios GitHub, GitLab, Bluesky, Hacker News, paquetes npm | — |
 | Palabra clave | Wikidata, Wikipedia, OpenAlex, GDELT, Crossref, Open Library, Stack Overflow, Europe PMC, Google Books, Hacker News | — |
 
-El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles,
-disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
+El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
+emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
 El catálogo actual suma 43 adaptadores: 37 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.

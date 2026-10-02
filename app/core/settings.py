@@ -231,6 +231,18 @@ class Settings(BaseSettings):
         ge=1,
         le=50,
     )
+    orchestrator_max_discovery_depth: int = Field(
+        default=2,
+        alias="ORCHESTRATOR_MAX_DISCOVERY_DEPTH",
+        ge=1,
+        le=3,
+    )
+    orchestrator_max_discovery_events: int = Field(
+        default=50,
+        alias="ORCHESTRATOR_MAX_DISCOVERY_EVENTS",
+        ge=1,
+        le=100,
+    )
     orchestrator_require_ollama: bool = Field(
         default=False,
         alias="ORCHESTRATOR_REQUIRE_OLLAMA",

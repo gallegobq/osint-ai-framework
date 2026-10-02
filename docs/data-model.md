@@ -25,6 +25,11 @@ erDiagram
     investigations ||--o{ collection_jobs : runs
     investigations ||--o{ search_runs : orchestrates
     search_runs ||--o{ collection_jobs : plans
+    search_runs ||--o{ search_discoveries : contains
+    search_discoveries ||--o{ search_discovery_edges : parent
+    search_discoveries ||--o{ search_discovery_edges : child
+    collection_jobs o|--o{ search_discovery_edges : emits
+    evidence o|--o{ search_discovery_edges : supports
     investigations ||--o{ analysis_jobs : analyzes
     users ||--o{ audit_events : acts
 ```
@@ -65,6 +70,10 @@ ser pertinente en investigaciones distintas sin crear acoplamiento entre casos.
 - `collection_jobs`: consulta normalizada, intentos, estado y evidencia creada.
 - `search_runs`: objetivo, blancos normalizados, perfil inmutable, política,
   plan, resumen y estado agregado; enlaza los `collection_jobs` hijos.
+- `search_discoveries`: nodos tipados y normalizados, deduplicados por ejecución,
+  con profundidad mínima y hash estable.
+- `search_discovery_edges`: relación padre-hijo y linaje hacia el trabajo y la
+  evidencia que produjeron el observable.
 - `analysis_jobs`: proveedor, versión de prompt, salida y requisito de revisión.
 - `audit_events`: actor, acción, tipo/ID de recurso y metadatos no sensibles.
 

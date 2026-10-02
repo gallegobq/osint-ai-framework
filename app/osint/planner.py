@@ -90,6 +90,45 @@ class SearchPlanner:
             max_tools=max_tools,
         )
 
+    def plan_discoveries(
+        self,
+        *,
+        targets: list[dict],
+        max_tools: int,
+        profile: ScanProfile | str,
+    ) -> SearchPlanResult:
+        """Plan derived targets deterministically and with passive collectors only."""
+
+        selected_profile = ScanProfile(profile)
+        candidates = [
+            collector
+            for collector in self.registry.available()
+            if collector.passive
+            if collector.supports_profile(selected_profile)
+        ]
+        if not candidates:
+            raise RuntimeError(
+                "No passive collectors are currently available for discoveries."
+            )
+        plan = self._deterministic_plan(
+            targets=targets,
+            candidates=candidates,
+            max_tools=max_tools,
+            profile=(
+                ScanProfile.ALL
+                if selected_profile is ScanProfile.AUTO
+                else selected_profile
+            ),
+        )
+        return SearchPlanResult(
+            planner=f"discovery:{selected_profile.value}",
+            summary=(
+                "Derived targets were matched to compatible passive collectors "
+                "without invoking the language model."
+            ),
+            steps=plan.steps,
+        )
+
     def _ollama_plan(
         self,
         *,

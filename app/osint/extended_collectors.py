@@ -9,7 +9,7 @@ import json
 from urllib.parse import quote
 
 from app.core.settings import settings
-from app.osint.contracts import CollectedItem, Collector
+from app.osint.contracts import CollectedItem, Collector, DiscoveredTarget
 from app.osint.domain import normalize_domain
 from app.osint.http import SafeHttpClient
 from app.osint.targets import (
@@ -28,6 +28,7 @@ def _item(
     title: str,
     data: object,
     provider: str,
+    discoveries: tuple[DiscoveredTarget, ...] = (),
 ) -> CollectedItem:
     raw_data = data if isinstance(data, dict) else {"results": data}
     return CollectedItem(
@@ -38,6 +39,7 @@ def _item(
         content=json.dumps(data, ensure_ascii=False, sort_keys=True),
         raw_data=raw_data,
         source_metadata={"provider": provider},
+        discoveries=discoveries,
     )
 
 
@@ -68,6 +70,7 @@ class DomainCertSpotterCollector(Collector):
     target_types = frozenset({"domain", "hostname"})
     query_field = "domain"
     profiles = frozenset({"footprint", "investigate"})
+    emitted_target_types = frozenset({"hostname"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -92,6 +95,17 @@ class DomainCertSpotterCollector(Collector):
             "domain": domain,
             "results": results[: settings.osint_max_items_per_collector],
         }
+        names = sorted(
+            {
+                str(name).lower().removeprefix("*.").rstrip(".")
+                for result in results[: settings.osint_max_items_per_collector]
+                if isinstance(result, dict)
+                for values in [result.get("dns_names")]
+                if isinstance(values, list)
+                for name in values
+                if isinstance(name, str)
+            }
+        )
         return [
             _item(
                 source_type="certificate_transparency",
@@ -100,6 +114,16 @@ class DomainCertSpotterCollector(Collector):
                 title=f"Cert Spotter issuances for {domain}",
                 data=data,
                 provider="SSLMate Cert Spotter",
+                discoveries=tuple(
+                    DiscoveredTarget(
+                        "hostname",
+                        name,
+                        "certificate_name",
+                    )
+                    for name in names[
+                        : settings.orchestrator_max_discovery_events
+                    ]
+                ),
             )
         ]
 
@@ -204,6 +228,7 @@ class IpShodanInternetDbCollector(Collector):
     target_types = frozenset({"ip"})
     query_field = "ip"
     profiles = frozenset({"footprint", "investigate"})
+    emitted_target_types = frozenset({"hostname", "cve"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -218,6 +243,27 @@ class IpShodanInternetDbCollector(Collector):
             locator,
             allowed_hosts={"internetdb.shodan.io"},
         )
+        data = payload if isinstance(payload, dict) else {}
+        discoveries = [
+            *(
+                DiscoveredTarget("hostname", str(value), "observed_hostname")
+                for value in (
+                    data.get("hostnames")
+                    if isinstance(data.get("hostnames"), list)
+                    else []
+                )
+                if isinstance(value, str)
+            ),
+            *(
+                DiscoveredTarget("cve", str(value), "reported_vulnerability")
+                for value in (
+                    data.get("vulns")
+                    if isinstance(data.get("vulns"), list)
+                    else []
+                )
+                if isinstance(value, str)
+            ),
+        ]
         return [
             _item(
                 source_type="internet_asset_index",
@@ -226,6 +272,9 @@ class IpShodanInternetDbCollector(Collector):
                 title=f"Shodan InternetDB record for {ip}",
                 data=payload,
                 provider="Shodan InternetDB",
+                discoveries=tuple(
+                    discoveries[: settings.orchestrator_max_discovery_events]
+                ),
             )
         ]
 

@@ -3,7 +3,7 @@ import json
 from urllib.parse import quote
 
 from app.core.settings import settings
-from app.osint.contracts import CollectedItem, Collector
+from app.osint.contracts import CollectedItem, Collector, DiscoveredTarget
 from app.osint.domain import normalize_domain
 from app.osint.http import SafeHttpClient
 from app.osint.targets import (
@@ -23,6 +23,7 @@ def _json_item(
     title: str,
     data: object,
     provider: str,
+    discoveries: tuple[DiscoveredTarget, ...] = (),
 ) -> CollectedItem:
     raw_data = data if isinstance(data, dict) else {"results": data}
     return CollectedItem(
@@ -33,6 +34,7 @@ def _json_item(
         content=json.dumps(data, ensure_ascii=False, sort_keys=True),
         raw_data=raw_data,
         source_metadata={"provider": provider},
+        discoveries=discoveries,
     )
 
 
@@ -43,6 +45,7 @@ class DomainDnsRecordsCollector(Collector):
     query_field = "domain"
     record_types = ("A", "AAAA", "MX", "NS", "TXT", "CNAME", "SOA", "CAA")
     profiles = frozenset({"footprint", "investigate"})
+    emitted_target_types = frozenset({"hostname", "ip"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -75,6 +78,34 @@ class DomainDnsRecordsCollector(Collector):
                 "comment": payload.get("Comment"),
             }
         data = {"domain": domain, "records": records}
+        discoveries = []
+        for record_type, record_set in records.items():
+            for answer in record_set["answers"]:
+                if not isinstance(answer, dict):
+                    continue
+                value = str(answer.get("data", "")).strip()
+                if not value:
+                    continue
+                if record_type in {"A", "AAAA"}:
+                    discoveries.append(
+                        DiscoveredTarget("ip", value, "dns_resolves_to")
+                    )
+                elif record_type == "MX":
+                    discoveries.append(
+                        DiscoveredTarget(
+                            "hostname",
+                            value.split()[-1].rstrip("."),
+                            "mail_exchanger",
+                        )
+                    )
+                elif record_type in {"NS", "CNAME"}:
+                    discoveries.append(
+                        DiscoveredTarget(
+                            "hostname",
+                            value.rstrip("."),
+                            record_type.lower(),
+                        )
+                    )
         return [
             _json_item(
                 source_type="dns_over_https",
@@ -83,6 +114,9 @@ class DomainDnsRecordsCollector(Collector):
                 title=f"Complete DNS record set for {domain}",
                 data=data,
                 provider="Google Public DNS",
+                discoveries=tuple(
+                    discoveries[: settings.orchestrator_max_discovery_events]
+                ),
             )
         ]
 
@@ -93,6 +127,7 @@ class DomainCertificateTransparencyCollector(Collector):
     target_types = frozenset({"domain", "hostname"})
     query_field = "domain"
     profiles = frozenset({"footprint", "investigate"})
+    emitted_target_types = frozenset({"hostname"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -150,6 +185,16 @@ class DomainCertificateTransparencyCollector(Collector):
                 title=f"Certificate transparency for {domain}",
                 data=data,
                 provider="crt.sh",
+                discoveries=tuple(
+                    DiscoveredTarget(
+                        "hostname",
+                        name,
+                        "certificate_name",
+                    )
+                    for name in sorted(names)[
+                        : settings.orchestrator_max_discovery_events
+                    ]
+                ),
             )
         ]
 
@@ -334,6 +379,7 @@ class IpReverseDnsCollector(Collector):
     target_types = frozenset({"ip"})
     query_field = "ip"
     profiles = frozenset({"footprint", "investigate"})
+    emitted_target_types = frozenset({"hostname"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -378,6 +424,16 @@ class IpReverseDnsCollector(Collector):
                 title=f"Reverse DNS for {ip}",
                 data=data,
                 provider="Google Public DNS",
+                discoveries=tuple(
+                    DiscoveredTarget(
+                        "hostname",
+                        hostname,
+                        "reverse_dns",
+                    )
+                    for hostname in hostnames[
+                        : settings.orchestrator_max_discovery_events
+                    ]
+                ),
             )
         ]
 

@@ -1,7 +1,7 @@
 import json
 import socket
 
-from app.osint.contracts import CollectedItem, Collector
+from app.osint.contracts import CollectedItem, Collector, DiscoveredTarget
 from app.osint.domain import normalize_domain
 from app.osint.http import SafeHttpClient
 
@@ -12,6 +12,7 @@ class DomainDnsCollector(Collector):
     target_types = frozenset({"domain", "hostname"})
     query_field = "domain"
     profiles = frozenset({"footprint", "investigate"})
+    emitted_target_types = frozenset({"ip"})
 
     def validate_query(self, query: dict) -> dict:
         return {"domain": normalize_domain(query.get("domain"))}
@@ -30,6 +31,14 @@ class DomainDnsCollector(Collector):
                 title=f"DNS records for {domain}",
                 content=json.dumps(data, ensure_ascii=False, sort_keys=True),
                 raw_data=data,
+                discoveries=tuple(
+                    DiscoveredTarget(
+                        target_type="ip",
+                        value=address,
+                        relation="resolves_to",
+                    )
+                    for address in addresses
+                ),
             )
         ]
 

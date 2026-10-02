@@ -1,3 +1,3 @@
 """Constantes versionadas compartidas por la aplicación."""
 
-ALEMBIC_HEAD = "7b2e9c4a6f10"
+ALEMBIC_HEAD = "f3a7c9d2e104"

@@ -73,7 +73,10 @@ def main() -> None:
                     ),
                     "targets": [{"type": "domain", "value": "example.com"}],
                     "profile": "footprint",
-                    "max_tools": 3,
+                    "follow_discoveries": True,
+                    "discovery_max_depth": 1,
+                    "discovery_max_events": 10,
+                    "max_tools": 20,
                     "allow_active": False,
                     "authorization_confirmed": True,
                     "scope_note": "IANA reserved domain used for testing.",
@@ -103,6 +106,26 @@ def main() -> None:
                 raise RuntimeError("All orchestrated collectors failed.")
             if not summary.get("evidence_ids"):
                 raise RuntimeError("Orchestration did not create evidence.")
+            if summary.get("followed_discovery_jobs", 0) < 1:
+                raise RuntimeError("Discovery events did not trigger passive modules.")
+
+            graph_response = client.get(
+                f"/api/v1/search-runs/{run['id']}/discoveries",
+                headers=headers,
+            )
+            graph_response.raise_for_status()
+            graph = graph_response.json()
+            nodes = graph.get("nodes") or []
+            edges = graph.get("edges") or []
+            if not any(
+                node.get("target_type") == "domain"
+                and node.get("target_value") == "example.com"
+                and node.get("min_depth") == 0
+                for node in nodes
+            ):
+                raise RuntimeError("Discovery graph is missing its seed target.")
+            if len(nodes) < 2 or len(edges) < 2:
+                raise RuntimeError("Discovery graph did not persist derived lineage.")
 
             evidence_response = client.get(
                 f"/api/v1/investigations/{investigation_id}/evidence",
@@ -116,7 +139,8 @@ def main() -> None:
                 "Orchestrator smoke passed: "
                 f"run={run['id']} status={run['status']} "
                 f"planner={run['planner']} "
-                f"evidence={len(summary['evidence_ids'])}"
+                f"evidence={len(summary['evidence_ids'])} "
+                f"discoveries={len(nodes)} edges={len(edges)}"
             )
         finally:
             if headers and investigation_id:

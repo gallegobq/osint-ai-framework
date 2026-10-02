@@ -50,9 +50,19 @@ class StubClient:
         if url.endswith("collinfo.json"):
             return [{"id": "CC-MAIN-2026-30"}]
         if "certspotter" in url:
-            return [{"id": "issuance-1", "dns_names": ["example.com"]}]
+            return [
+                {
+                    "id": "issuance-1",
+                    "dns_names": ["example.com", "*.api.example.com"],
+                }
+            ]
         if "internetdb.shodan.io" in url:
-            return {"ip": "8.8.8.8", "ports": [53], "vulns": []}
+            return {
+                "ip": "8.8.8.8",
+                "ports": [53],
+                "hostnames": ["dns.google"],
+                "vulns": ["CVE-2021-44228"],
+            }
         if "bsky.app" in url:
             return {"handle": "alice.example", "did": "did:plc:test"}
         if "firebaseio.com" in url:
@@ -131,3 +141,27 @@ def test_registry_includes_all_extended_collectors_as_available() -> None:
     assert all(by_name[name]["available"] for name in NEW_COLLECTOR_NAMES)
     assert all(by_name[name]["passive"] for name in NEW_COLLECTOR_NAMES)
     assert all(not by_name[name]["requires_api_key"] for name in NEW_COLLECTOR_NAMES)
+
+
+def test_infrastructure_collectors_emit_explicit_typed_discoveries() -> None:
+    cert_item = DomainCertSpotterCollector(StubClient()).collect(
+        {"domain": "example.com"}
+    )[0]
+    internetdb_item = IpShodanInternetDbCollector(StubClient()).collect(
+        {"ip": "8.8.8.8"}
+    )[0]
+
+    assert {
+        (item.target_type, item.value, item.relation)
+        for item in cert_item.discoveries
+    } >= {
+        ("hostname", "example.com", "certificate_name"),
+        ("hostname", "api.example.com", "certificate_name"),
+    }
+    assert {
+        (item.target_type, item.value, item.relation)
+        for item in internetdb_item.discoveries
+    } == {
+        ("hostname", "dns.google", "observed_hostname"),
+        ("cve", "CVE-2021-44228", "reported_vulnerability"),
+    }

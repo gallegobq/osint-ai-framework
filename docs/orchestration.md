@@ -47,6 +47,9 @@ Content-Type: application/json
     {"type": "asn", "value": "AS15169"}
   ],
   "max_tools": 10,
+  "follow_discoveries": true,
+  "discovery_max_depth": 1,
+  "discovery_max_events": 25,
   "allow_active": false,
   "authorization_confirmed": true,
   "scope_note": "Dominio reservado y ASN público usados para validación"
@@ -87,6 +90,27 @@ La interfaz local usa este modo automático de forma predeterminada y solicita
 hasta 40 adaptadores compatibles. Puedes seleccionar un tipo y valor explícitos
 cuando quieras evitar ambigüedad.
 
+## Grafo de descubrimientos
+
+El seguimiento de observables derivados es opt-in mediante
+`follow_discoveries=true`. Los colectores declaran los tipos que pueden emitir
+y entregan eventos tipados con una relación explícita. El servidor vuelve a
+normalizar cada valor, descarta objetivos inválidos o privados, deduplica nodos
+por ejecución y conserva una arista hacia el trabajo y la evidencia de origen.
+
+El encadenamiento derivado es determinista: nunca consulta al LLM y sólo
+selecciona módulos pasivos compatibles. `discovery_max_depth` limita las capas
+y `discovery_max_events` limita las aristas registradas; `max_tools` sigue
+siendo el techo total de trabajos iniciales y derivados. Los límites globales
+`ORCHESTRATOR_MAX_DISCOVERY_DEPTH` y `ORCHESTRATOR_MAX_DISCOVERY_EVENTS`
+impiden que una solicitud amplíe esos valores. Las vigilancias programadas
+conservan la misma política y continúan forzando `allow_active=false`.
+
+`GET /api/v1/search-runs/{id}/discoveries` devuelve nodos y aristas con
+profundidad, relación, trabajo y evidencia. Los nodos de profundidad cero son
+los blancos iniciales; registrar un nodo no implica que se haya ejecutado otro
+módulo cuando no existe presupuesto o suscriptor compatible.
+
 ## Tipos de blanco
 
 | Tipo | Ejemplo | Controles |
@@ -103,6 +127,8 @@ cuando quieras evitar ambigüedad.
 - Máximo 20 blancos por ejecución y 50 herramientas por contrato; el límite
   operativo predeterminado es 40 y se controla con
   `ORCHESTRATOR_MAX_TOOLS`.
+- El seguimiento admite como máximo la profundidad y eventos configurados por
+  el operador, siempre dentro de los topes globales del servidor.
 - Las respuestas externas están limitadas por bytes e ítems.
 - Todos los endpoints de proveedores usan HTTPS, hosts fijados y resolución a
   direcciones públicas; las redirecciones RDAP se validan.

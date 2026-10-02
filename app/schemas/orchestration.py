@@ -30,6 +30,9 @@ class SearchRunCreate(BaseModel):
     profile: ScanProfile = ScanProfile.AUTO
     max_tools: int = Field(default=40, ge=1, le=50)
     allow_active: bool = False
+    follow_discoveries: bool = False
+    discovery_max_depth: int = Field(default=1, ge=1, le=3)
+    discovery_max_events: int = Field(default=25, ge=1, le=100)
     authorization_confirmed: bool
     scope_note: str | None = Field(default=None, max_length=1000)
 
@@ -76,6 +79,9 @@ class SearchRunRead(BaseModel):
     profile: ScanProfile
     max_tools: int
     allow_active: bool
+    follow_discoveries: bool
+    discovery_max_depth: int
+    discovery_max_events: int
     policy: dict
     status: SearchRunStatus
     planner: str | None
@@ -93,3 +99,33 @@ class ScanProfileRead(BaseModel):
     description: str
     deterministic: bool
     passive_only: bool
+
+
+class SearchDiscoveryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    search_run_id: int
+    target_type: SearchTargetType
+    target_value: str
+    min_depth: int
+    created_at: datetime
+
+
+class SearchDiscoveryEdgeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    search_run_id: int
+    parent_discovery_id: int | None
+    child_discovery_id: int
+    collection_job_id: int | None
+    evidence_id: int | None
+    relation: str
+    depth: int
+    created_at: datetime
+
+
+class SearchDiscoveryGraphRead(BaseModel):
+    nodes: list[SearchDiscoveryRead]
+    edges: list[SearchDiscoveryEdgeRead]

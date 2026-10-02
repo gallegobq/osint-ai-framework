@@ -1,6 +1,6 @@
 # Paridad de Linterna con SpiderFoot y plataformas OSINT
 
-Fecha de corte: 2026-10-01. Esta matriz separa lo implementado de lo planeado;
+Fecha de corte: 2026-10-02. Esta matriz separa lo implementado de lo planeado;
 no presenta una aspiración como funcionalidad disponible.
 
 ## Referencias comparadas
@@ -34,7 +34,7 @@ no presenta una aspiración como funcionalidad disponible.
 | Programación | HX / IntelOwl | vigilancia recurrente pasiva con revalidación | Implementado |
 | Procedencia e integridad | SpiderFoot | fuente, localizador, tiempo, SHA-256, HMAC y auditoría encadenada | Implementado |
 | Exportación CTI/SIEM | OpenCTI | STIX 2.1, NDJSON y CEF | Implementado |
-| Encadenamiento por eventos | SpiderFoot | los módulos aún no consumen automáticamente observables derivados | Siguiente incremento |
+| Encadenamiento por eventos | SpiderFoot | base implementada: emisores explícitos, grafo durable y recorrido pasivo opt-in con límites; falta ampliar emisores y suscripciones | Parcial |
 | Correlación declarativa | SpiderFoot | hallazgos manuales/LLM, sin DSL de reglas | Pendiente |
 | Playbooks/pivots | IntelOwl | perfiles disponibles; falta DAG versionado y condiciones | Pendiente |
 | Marketplace aislado | Recon-ng | registro cerrado en código; falta SDK firmado y sandbox por módulo | Pendiente |
@@ -43,10 +43,10 @@ no presenta una aspiración como funcionalidad disponible.
 
 ## Orden de implementación
 
-1. **Ruta de descubrimiento**: observables tipados, evento padre, módulo y
-   evidencia; cola acotada por profundidad, número de módulos y deduplicación.
-2. **Correlación**: reglas declarativas versionadas sobre evidencia y grafo,
+1. **Correlación**: reglas declarativas versionadas sobre evidencia y grafo,
    resultados explicables y pruebas con datasets sintéticos.
+2. **Ampliación del grafo**: más emisores/suscriptores, métricas de cobertura y
+   reanudación idempotente de capas interrumpidas.
 3. **Playbooks**: DAG con condiciones, retry/cancelación por nodo, snapshots de
    configuración y referencias a secretos, nunca secretos serializados.
 4. **Conectores**: importación, enriquecimiento y sinks durables STIX/TAXII,

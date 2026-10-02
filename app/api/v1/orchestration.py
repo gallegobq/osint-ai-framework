@@ -11,6 +11,7 @@ from app.models.user import User
 from app.osint.profiles import scan_profile_catalog
 from app.schemas.orchestration import (
     ScanProfileRead,
+    SearchDiscoveryGraphRead,
     SearchRunCreate,
     SearchRunRead,
 )
@@ -99,3 +100,21 @@ def get_search_run(
     ],
 ) -> SearchRunRead:
     return service.get(current_user, run_id)
+
+
+@router.get(
+    "/search-runs/{run_id}/discoveries",
+    response_model=SearchDiscoveryGraphRead,
+)
+def get_search_discovery_graph(
+    run_id: int,
+    current_user: Annotated[
+        User,
+        Depends(require_permission(Permissions.Collection.READ)),
+    ],
+    service: Annotated[
+        OrchestrationService,
+        Depends(get_orchestration_service),
+    ],
+) -> SearchDiscoveryGraphRead:
+    return service.discovery_graph(current_user, run_id)

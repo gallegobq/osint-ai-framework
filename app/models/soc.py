@@ -100,6 +100,14 @@ class SearchSchedule(BaseModel):
             "profile IN ('auto', 'passive', 'footprint', 'investigate', 'all')",
             name="ck_search_schedules_profile",
         ),
+        CheckConstraint(
+            "discovery_max_depth >= 1 AND discovery_max_depth <= 3",
+            name="ck_search_schedules_discovery_max_depth",
+        ),
+        CheckConstraint(
+            "discovery_max_events >= 1 AND discovery_max_events <= 100",
+            name="ck_search_schedules_discovery_max_events",
+        ),
     )
 
     investigation_id: Mapped[int] = mapped_column(
@@ -117,6 +125,15 @@ class SearchSchedule(BaseModel):
     targets: Mapped[list] = mapped_column(JSON, nullable=False)
     profile: Mapped[str] = mapped_column(
         String(20), nullable=False, default="passive", index=True
+    )
+    follow_discoveries: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    discovery_max_depth: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1
+    )
+    discovery_max_events: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=25
     )
     max_tools: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
     interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False)

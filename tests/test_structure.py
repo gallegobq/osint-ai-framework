@@ -28,6 +28,8 @@ def test_model_metadata_contains_identity_tables() -> None:
         "entity_relations",
         "collection_jobs",
         "search_runs",
+        "search_discoveries",
+        "search_discovery_edges",
         "analysis_jobs",
         "audit_events",
         "knowledge_documents",
@@ -65,6 +67,7 @@ def test_lifecycle_routes_are_registered() -> None:
     assert "/api/v1/investigations/{investigation_id}/search-runs" in paths
     assert "/api/v1/search-profiles" in paths
     assert "/api/v1/search-runs/{run_id}" in paths
+    assert "/api/v1/search-runs/{run_id}/discoveries" in paths
     assert "/api/v1/investigations/{investigation_id}/report" in paths
     assert "/api/v1/projects/{project_id}/soc-knowledge/documents" in paths
     assert "/api/v1/projects/{project_id}/soc-knowledge/query" in paths

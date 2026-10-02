@@ -109,6 +109,7 @@ Respuesta inicial: HTTP 202 y estado `queued`.
 | POST | `/investigations/{id}/search-runs` | `collection:execute` |
 | GET | `/investigations/{id}/search-runs` | `collection:read` |
 | GET | `/search-runs/{id}` | `collection:read` |
+| GET | `/search-runs/{id}/discoveries` | `collection:read` |
 
 La creación exige `authorization_confirmed=true` y un límite de herramientas;
 los blancos tipados son opcionales. `profile` admite `auto`, `passive`,
@@ -116,6 +117,15 @@ los blancos tipados son opcionales. `profile` admite `auto`, `passive`,
 valida cada paso contra catálogo, perfil, tipo de blanco, disponibilidad,
 política activa y límites. HTTP 202 no significa que la búsqueda terminó;
 consulta el recurso hasta `succeeded`, `partial` o `failed`.
+
+`follow_discoveries=true` habilita el encadenamiento derivado; de forma
+predeterminada permanece desactivado. `discovery_max_depth` y
+`discovery_max_events` acotan el
+recorrido, y `max_tools` limita en conjunto los trabajos iniciales y derivados.
+El recorrido derivado usa sólo colectores pasivos, normaliza nuevamente cada
+observable y expone el linaje de nodo, relación, trabajo y evidencia en el
+endpoint de descubrimientos. Las programaciones aceptan y preservan la misma
+política.
 
 `allow_active=true` sólo es aceptado para un pentest autorizado cuya ventana
 está vigente y requiere además una `scope_note` específica. El worker repite la

@@ -200,6 +200,14 @@ class SocService:
             raise BadRequestException(
                 "max_tools exceeds the configured orchestration limit."
             )
+        if data.discovery_max_depth > settings.orchestrator_max_discovery_depth:
+            raise BadRequestException(
+                "discovery_max_depth exceeds the configured orchestration limit."
+            )
+        if data.discovery_max_events > settings.orchestrator_max_discovery_events:
+            raise BadRequestException(
+                "discovery_max_events exceeds the configured orchestration limit."
+            )
         targets = [
             {
                 "type": target.type.value,
@@ -216,6 +224,9 @@ class SocService:
                 objective=" ".join(data.objective.split()),
                 targets=targets,
                 profile=data.profile.value,
+                follow_discoveries=data.follow_discoveries,
+                discovery_max_depth=data.discovery_max_depth,
+                discovery_max_events=data.discovery_max_events,
                 max_tools=data.max_tools,
                 interval_minutes=data.interval_minutes,
                 authorization_scope=data.authorization_scope.strip(),
@@ -261,6 +272,20 @@ class SocService:
         if values.get("max_tools", schedule.max_tools) > settings.orchestrator_max_tools:
             raise BadRequestException(
                 "max_tools exceeds the configured orchestration limit."
+            )
+        if (
+            values.get("discovery_max_depth", schedule.discovery_max_depth)
+            > settings.orchestrator_max_discovery_depth
+        ):
+            raise BadRequestException(
+                "discovery_max_depth exceeds the configured orchestration limit."
+            )
+        if (
+            values.get("discovery_max_events", schedule.discovery_max_events)
+            > settings.orchestrator_max_discovery_events
+        ):
+            raise BadRequestException(
+                "discovery_max_events exceeds the configured orchestration limit."
             )
         if data.targets is not None:
             values["targets"] = [

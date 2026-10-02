@@ -5,6 +5,39 @@ from datetime import datetime
 from app.osint.profiles import ScanProfile
 
 
+DISCOVERY_TARGET_TYPES = frozenset(
+    {
+        "domain",
+        "hostname",
+        "ip",
+        "asn",
+        "url",
+        "username",
+        "email",
+        "hash",
+        "cve",
+        "keyword",
+    }
+)
+
+
+@dataclass(frozen=True, slots=True)
+class DiscoveredTarget:
+    target_type: str
+    value: str
+    relation: str = "related"
+
+    def __post_init__(self) -> None:
+        if self.target_type not in DISCOVERY_TARGET_TYPES:
+            raise ValueError("Unsupported discovered target type.")
+        if not isinstance(self.value, str) or not self.value.strip():
+            raise ValueError("Discovered target value must be a non-empty string.")
+        if len(self.value) > 2048:
+            raise ValueError("Discovered target value exceeds 2048 characters.")
+        if not self.relation or len(self.relation) > 100:
+            raise ValueError("Discovery relation must contain 1 to 100 characters.")
+
+
 @dataclass(frozen=True, slots=True)
 class CollectedItem:
     source_type: str
@@ -15,6 +48,7 @@ class CollectedItem:
     raw_data: dict = field(default_factory=dict)
     source_metadata: dict = field(default_factory=dict)
     observed_at: datetime | None = None
+    discoveries: tuple[DiscoveredTarget, ...] = ()
 
 
 class Collector(ABC):
@@ -25,6 +59,7 @@ class Collector(ABC):
     passive: bool = True
     requires_api_key: bool = False
     profiles: frozenset[str] = frozenset({ScanProfile.INVESTIGATE.value})
+    emitted_target_types: frozenset[str] = frozenset()
 
     def availability(self) -> tuple[bool, str | None]:
         """Return runtime availability without exposing secret configuration."""
@@ -41,6 +76,7 @@ class Collector(ABC):
             "passive": self.passive,
             "requires_api_key": self.requires_api_key,
             "profiles": self.supported_profiles(),
+            "emitted_target_types": sorted(self.emitted_target_types),
             "available": available,
             "unavailable_reason": reason,
         }

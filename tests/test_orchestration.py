@@ -5,6 +5,8 @@ from pydantic import ValidationError
 
 from app.core.exceptions import BadRequestException
 from app.llm.contracts import LLMProvider
+from app.models.job import SearchDiscovery
+from app.osint.contracts import DiscoveredTarget
 from app.osint.planner import SearchPlanner
 from app.osint.profiles import ScanProfile, scan_profile_catalog
 from app.osint.registry import CollectorRegistry
@@ -18,6 +20,7 @@ from app.osint.targets import (
     normalize_ip,
     normalize_public_url,
 )
+from app.repositories.job_repository import SearchDiscoveryRepository
 from app.schemas.orchestration import SearchRunCreate
 from app.schemas.soc import SearchScheduleCreate
 
@@ -88,6 +91,68 @@ def test_search_profile_contract_is_closed_and_defaults_to_auto() -> None:
         )
 
 
+def test_discovery_policy_is_opt_in_and_strictly_bounded() -> None:
+    request = SearchRunCreate(
+        objective="Research example.com",
+        targets=[{"type": "domain", "value": "example.com"}],
+        authorization_confirmed=True,
+    )
+
+    assert request.follow_discoveries is False
+    assert request.discovery_max_depth == 1
+    assert request.discovery_max_events == 25
+    with pytest.raises(ValidationError):
+        SearchRunCreate(
+            objective="Research example.com",
+            follow_discoveries=True,
+            discovery_max_depth=4,
+            discovery_max_events=101,
+            authorization_confirmed=True,
+        )
+
+
+def test_discovered_target_contract_rejects_untyped_or_empty_events() -> None:
+    assert DiscoveredTarget("ip", "8.8.8.8", "resolves_to").target_type == "ip"
+    with pytest.raises(ValueError):
+        DiscoveredTarget("phone", "+1 555 0100")
+    with pytest.raises(ValueError):
+        DiscoveredTarget("domain", " ")
+
+
+def test_discovery_dedup_reports_a_shorter_path_for_follow_up() -> None:
+    existing = SearchDiscovery(
+        search_run_id=7,
+        target_type="hostname",
+        target_value="deep.example.com",
+        value_hash="unused-by-fake-session",
+        min_depth=3,
+    )
+    db = Mock()
+    db.scalar.return_value = existing
+    repository = SearchDiscoveryRepository(db)
+
+    node, created, depth_lowered = repository.get_or_create(
+        search_run_id=7,
+        target_type="hostname",
+        target_value="deep.example.com",
+        depth=1,
+    )
+    _, created_again, depth_lowered_again = repository.get_or_create(
+        search_run_id=7,
+        target_type="hostname",
+        target_value="deep.example.com",
+        depth=1,
+    )
+
+    assert node is existing
+    assert node.min_depth == 1
+    assert created is False
+    assert depth_lowered is True
+    assert created_again is False
+    assert depth_lowered_again is False
+    db.flush.assert_called_once_with()
+
+
 def test_scheduled_searches_default_to_reproducible_passive_profile() -> None:
     schedule = SearchScheduleCreate(
         name="Daily example.com watch",
@@ -98,6 +163,7 @@ def test_scheduled_searches_default_to_reproducible_passive_profile() -> None:
     )
 
     assert schedule.profile is ScanProfile.PASSIVE
+    assert schedule.follow_discoveries is False
 
 
 def test_objective_can_infer_typed_targets() -> None:
@@ -126,6 +192,10 @@ def test_registry_exposes_available_and_keyed_tools_without_secrets() -> None:
     assert shodan["requires_api_key"] is True
     assert "footprint" in shodan["profiles"]
     assert "all" in shodan["profiles"]
+    domain_dns = next(
+        item for item in descriptions if item["name"] == "domain_dns"
+    )
+    assert domain_dns["emitted_target_types"] == ["ip"]
     assert "SHODAN_API_KEY" in str(shodan["unavailable_reason"])
     assert "key=" not in str(descriptions)
 
@@ -183,6 +253,25 @@ def test_deterministic_profiles_share_budget_across_targets() -> None:
     )
 
     assert {step["target_index"] for step in plan.steps} == {0, 1}
+
+
+def test_discovery_planner_is_passive_deterministic_and_profile_scoped() -> None:
+    provider = Mock(spec=LLMProvider)
+    registry = CollectorRegistry()
+    plan = SearchPlanner(registry, provider).plan_discoveries(
+        targets=[{"type": "ip", "value": "8.8.8.8"}],
+        max_tools=10,
+        profile=ScanProfile.FOOTPRINT,
+    )
+
+    assert plan.planner == "discovery:footprint"
+    assert plan.steps
+    assert all(
+        registry.get(step["collector"]).passive
+        and registry.get(step["collector"]).supports_profile("footprint")
+        for step in plan.steps
+    )
+    provider.generate_json.assert_not_called()
 
 
 def test_ollama_plan_is_restricted_to_compatible_allowlisted_tools() -> None:

@@ -21,6 +21,8 @@
   embeddings locales, recuperación híbrida y citas validadas.
 - Perfiles de escaneo `auto`, `passive`, `footprint`, `investigate` y `all`,
   persistidos tanto en ejecuciones únicas como en vigilancias programadas.
+- Grafo de descubrimientos opt-in con eventos tipados, linaje a evidencia,
+  deduplicación y encadenamiento exclusivamente pasivo y acotado.
 
 ## Próximos incrementos recomendados
 
@@ -36,8 +38,6 @@
 
 ### Investigación
 
-- Bus de eventos tipado para encadenar módulos por observables derivados y
-  conservar la ruta completa de descubrimiento.
 - Reglas de correlación declarativas, versionadas y explicables, con ejecución
   batch primero e incremental después.
 - Playbooks versionados, cancelación/reintento por módulo y perfiles clonables.

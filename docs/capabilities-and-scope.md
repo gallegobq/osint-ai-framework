@@ -22,6 +22,9 @@ Actualmente ofrece:
   credencial— y 1 validación TLS/HTTP activa aislada;
 - cinco perfiles de escaneo reproducibles equivalentes a los casos de uso de
   SpiderFoot: automático, pasivo, huella, investigación y completo;
+- grafo de descubrimientos con observables tipados, deduplicación y aristas
+  trazables al módulo y la evidencia de origen; su encadenamiento pasivo es
+  opt-in y tiene profundidad acotada;
 - observables de dominio, hostname, IP pública, ASN, URL pública, email, hash,
   CVE, usuario y palabra clave;
 - evidencia con procedencia, fecha, SHA-256 y deduplicación;
@@ -49,10 +52,17 @@ no significa “sin tráfico externo”.
 5. El perfil filtra colectores registrados y compatibles. Sólo el perfil
    automático consulta Ollama; los otros cuatro son deterministas. El modelo no
    ejecuta comandos, no inventa herramientas y no recibe claves de API.
-6. El worker consulta cada fuente de forma secuencial y limitada.
-7. Cada resultado se persiste como evidencia con fuente y hash. La ejecución
+6. El worker consulta cada fuente de forma secuencial y limitada. Algunos
+   colectores emiten observables derivados de forma explícita junto con su
+   relación; el servidor los normaliza y descarta valores inválidos o destinos
+   privados.
+7. Si el operador habilitó el seguimiento, el planificador encadena únicamente
+   módulos pasivos compatibles, con deduplicación y límites globales de
+   profundidad, eventos y trabajos. Cada arista conserva el módulo y la
+   evidencia que originaron el descubrimiento.
+8. Cada resultado se persiste como evidencia con fuente y hash. La ejecución
    termina como `succeeded`, `partial` o `failed`.
-8. El operador revisa evidencia, registra hallazgos SOC y descarga Markdown,
+9. El operador revisa evidencia, registra hallazgos SOC y descarga Markdown,
    STIX 2.1 o formatos SIEM. También puede programar la búsqueda para detectar
    cambios.
 

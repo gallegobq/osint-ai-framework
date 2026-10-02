@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
 
 from app.core.container import build_audit_service, build_evidence_service
-from app.core.exceptions import NotFoundException
+from app.core.exceptions import BadRequestException, NotFoundException
+from app.core.settings import settings
 from app.osint.registry import CollectorRegistry
+from app.osint.targets import normalize_target
 from app.repositories.job_repository import CollectionJobRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.evidence import EvidenceCreate
@@ -68,6 +70,8 @@ class CollectionExecutor:
             items = collector.collect(job.query)
             evidence_service = build_evidence_service(self.repository.db)
             evidence_ids = []
+            discoveries = []
+            seen_discoveries: set[tuple[str, str, str, int]] = set()
 
             for item in items:
                 evidence = evidence_service.add(
@@ -87,10 +91,42 @@ class CollectionExecutor:
                     commit=False,
                 )
                 evidence_ids.append(evidence.id)
+                for discovered in item.discoveries:
+                    if (
+                        len(discoveries)
+                        >= settings.orchestrator_max_discovery_events
+                    ):
+                        break
+                    try:
+                        normalized_value = normalize_target(
+                            discovered.target_type,
+                            discovered.value,
+                        )
+                    except BadRequestException:
+                        continue
+                    identity = (
+                        discovered.target_type,
+                        normalized_value,
+                        discovered.relation,
+                        evidence.id,
+                    )
+                    if identity in seen_discoveries:
+                        continue
+                    seen_discoveries.add(identity)
+                    discoveries.append(
+                        {
+                            "target_type": discovered.target_type,
+                            "target_value": normalized_value,
+                            "relation": discovered.relation,
+                            "evidence_id": evidence.id,
+                            "source_collector": collector.name,
+                        }
+                    )
 
             result = {
                 "items_collected": len(items),
                 "evidence_ids": evidence_ids,
+                "discoveries": discoveries,
             }
             job.status = JobStatus.SUCCEEDED.value
             job.result_summary = result

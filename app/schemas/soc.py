@@ -156,6 +156,9 @@ class SearchScheduleCreate(BaseModel):
     objective: str = Field(min_length=5, max_length=2000)
     targets: list[SearchTarget] = Field(min_length=1, max_length=20)
     profile: ScanProfile = ScanProfile.PASSIVE
+    follow_discoveries: bool = False
+    discovery_max_depth: int = Field(default=1, ge=1, le=3)
+    discovery_max_events: int = Field(default=25, ge=1, le=100)
     max_tools: int = Field(default=20, ge=1, le=50)
     interval_minutes: int = Field(default=1440, ge=15, le=43200)
     authorization_confirmed: bool
@@ -174,6 +177,9 @@ class SearchScheduleUpdate(BaseModel):
     objective: str | None = Field(default=None, min_length=5, max_length=2000)
     targets: list[SearchTarget] | None = Field(default=None, min_length=1, max_length=20)
     profile: ScanProfile | None = None
+    follow_discoveries: bool | None = None
+    discovery_max_depth: int | None = Field(default=None, ge=1, le=3)
+    discovery_max_events: int | None = Field(default=None, ge=1, le=100)
     max_tools: int | None = Field(default=None, ge=1, le=50)
     interval_minutes: int | None = Field(default=None, ge=15, le=43200)
     authorization_scope: str | None = Field(default=None, min_length=10, max_length=5000)
@@ -190,6 +196,9 @@ class SearchScheduleUpdate(BaseModel):
                     "objective",
                     "targets",
                     "profile",
+                    "follow_discoveries",
+                    "discovery_max_depth",
+                    "discovery_max_events",
                     "max_tools",
                     "interval_minutes",
                     "authorization_scope",
@@ -222,6 +231,9 @@ class SearchScheduleRead(BaseModel):
     objective: str
     targets: list[dict]
     profile: ScanProfile
+    follow_discoveries: bool
+    discovery_max_depth: int
+    discovery_max_events: int
     max_tools: int
     interval_minutes: int
     authorization_scope: str
