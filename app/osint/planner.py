@@ -6,6 +6,7 @@ from app.core.exceptions import BadRequestException, ServiceUnavailableException
 from app.llm.contracts import LLMProvider
 from app.llm.factory import build_llm_provider
 from app.osint.registry import CollectorRegistry
+from app.osint.profiles import ScanProfile
 from app.schemas.orchestration import ProposedSearchPlan
 
 
@@ -35,14 +36,27 @@ class SearchPlanner:
         max_tools: int,
         allow_active: bool,
         operation_mode: str = "attack_surface",
+        profile: ScanProfile | str = ScanProfile.AUTO,
     ) -> SearchPlanResult:
+        selected_profile = ScanProfile(profile)
         candidates = [
             collector
             for collector in self.registry.available()
             if allow_active or collector.passive
+            if collector.supports_profile(selected_profile)
         ]
         if not candidates:
-            raise RuntimeError("No collectors are currently available.")
+            raise RuntimeError(
+                f"No collectors are currently available for {selected_profile.value}."
+            )
+
+        if selected_profile is not ScanProfile.AUTO:
+            return self._deterministic_plan(
+                targets=targets,
+                candidates=candidates,
+                max_tools=max_tools,
+                profile=selected_profile,
+            )
 
         try:
             provider = self.provider or build_llm_provider()
@@ -177,16 +191,18 @@ JSON schema:
         targets: list[dict],
         candidates: list,
         max_tools: int,
+        profile: ScanProfile = ScanProfile.AUTO,
     ) -> SearchPlanResult:
-        steps = []
+        compatible_steps: list[list[dict]] = []
         for target_index, target in enumerate(targets):
+            target_steps = []
             for collector in candidates:
                 if target["type"] not in collector.target_types:
                     continue
                 query = collector.validate_query(
                     {collector.query_field: target["value"]}
                 )
-                steps.append(
+                target_steps.append(
                     {
                         "collector": collector.name,
                         "target_index": target_index,
@@ -194,17 +210,34 @@ JSON schema:
                         "reason": "Compatible source selected by the safe fallback planner.",
                     }
                 )
+            compatible_steps.append(target_steps)
+
+        steps = []
+        while len(steps) < max_tools:
+            added = False
+            for target_steps in compatible_steps:
+                if not target_steps:
+                    continue
+                steps.append(target_steps.pop(0))
+                added = True
                 if len(steps) >= max_tools:
                     break
-            if len(steps) >= max_tools:
+            if not added:
                 break
         if not steps:
             raise RuntimeError("No compatible collectors are available for the targets.")
         return SearchPlanResult(
-            planner="deterministic-fallback",
+            planner=(
+                "deterministic-fallback"
+                if profile is ScanProfile.AUTO
+                else f"profile:{profile.value}"
+            ),
             summary=(
                 "Ollama was unavailable or returned an invalid plan; compatible "
                 "allowlisted collectors were selected deterministically."
+                if profile is ScanProfile.AUTO
+                else f"The {profile.value} profile selected compatible allowlisted "
+                "collectors deterministically."
             ),
             steps=steps,
         )

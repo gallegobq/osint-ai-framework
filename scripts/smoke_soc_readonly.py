@@ -28,9 +28,18 @@ def main() -> int:
     token = tokens["access_token"]
     _, collectors = request("/api/v1/collectors", token=token)
     by_name = {item["name"]: item for item in collectors}
-    assert len(collectors) == 42
+    assert len(collectors) >= 43
     assert {"cve_nvd", "cve_cisa_kev", "cve_epss", "email_domain_dns"} <= by_name.keys()
     assert "hash" in by_name["hash_virustotal"]["target_types"]
+    assert all(item["profiles"] for item in collectors)
+    _, profiles = request("/api/v1/search-profiles", token=token)
+    assert {item["name"] for item in profiles} == {
+        "auto",
+        "passive",
+        "footprint",
+        "investigate",
+        "all",
+    }
     _, user = request("/api/v1/auth/me", token=token)
     assert isinstance(user["mfa_enabled"], bool)
     _, schema = request("/openapi.json")
@@ -40,6 +49,7 @@ def main() -> int:
         "/api/v1/investigations/{investigation_id}/search-schedules",
         "/api/v1/investigations/{investigation_id}/report.stix.json",
         "/api/v1/investigations/{investigation_id}/report.ndjson",
+        "/api/v1/search-profiles",
     }
     assert expected <= paths.keys()
     print(

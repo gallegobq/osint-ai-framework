@@ -20,6 +20,7 @@ class ShodanIpCollector(Collector):
     target_types = frozenset({"ip"})
     query_field = "ip"
     requires_api_key = True
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -56,6 +57,7 @@ class ShodanIpCollector(Collector):
 
 class _VirusTotalCollector(Collector):
     requires_api_key = True
+    profiles = frozenset({"footprint", "investigate"})
     endpoint_collection: str
     target_type: str
 
@@ -135,6 +137,7 @@ class VirusTotalHashCollector(_VirusTotalCollector):
     target_types = frozenset({"hash"})
     query_field = "hash"
     endpoint_collection = "files"
+    profiles = frozenset({"investigate"})
 
     def validate_query(self, query: dict) -> dict:
         return {"hash": normalize_hash(query.get("hash"))}
@@ -154,6 +157,7 @@ class SecurityTrailsDomainCollector(Collector):
     target_types = frozenset({"domain"})
     query_field = "domain"
     requires_api_key = True
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()

@@ -70,6 +70,7 @@ class OrchestrationExecutor:
                 max_tools=run.max_tools,
                 allow_active=effective_allow_active,
                 operation_mode=run.investigation.operation_mode,
+                profile=run.profile,
             )
             run.planner = plan.planner
             run.plan = {"summary": plan.summary, "steps": plan.steps}

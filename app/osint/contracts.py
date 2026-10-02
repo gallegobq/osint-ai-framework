@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from app.osint.profiles import ScanProfile
+
 
 @dataclass(frozen=True, slots=True)
 class CollectedItem:
@@ -22,6 +24,7 @@ class Collector(ABC):
     query_field: str = "target"
     passive: bool = True
     requires_api_key: bool = False
+    profiles: frozenset[str] = frozenset({ScanProfile.INVESTIGATE.value})
 
     def availability(self) -> tuple[bool, str | None]:
         """Return runtime availability without exposing secret configuration."""
@@ -37,9 +40,28 @@ class Collector(ABC):
             "query_field": self.query_field,
             "passive": self.passive,
             "requires_api_key": self.requires_api_key,
+            "profiles": self.supported_profiles(),
             "available": available,
             "unavailable_reason": reason,
         }
+
+    def supports_profile(self, profile: ScanProfile | str) -> bool:
+        selected = ScanProfile(profile)
+        if selected in {ScanProfile.AUTO, ScanProfile.ALL}:
+            return True
+        if selected is ScanProfile.PASSIVE:
+            return self.passive
+        return selected.value in self.profiles
+
+    def supported_profiles(self) -> list[str]:
+        supported = {
+            ScanProfile.AUTO.value,
+            ScanProfile.ALL.value,
+            *self.profiles,
+        }
+        if self.passive:
+            supported.add(ScanProfile.PASSIVE.value)
+        return sorted(supported)
 
     @abstractmethod
     def validate_query(self, query: dict) -> dict:

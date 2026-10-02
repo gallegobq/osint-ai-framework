@@ -8,12 +8,31 @@ from app.core.exceptions import ForbiddenException
 from app.core.permissions import Permissions
 from app.dependencies.orchestration import get_orchestration_service
 from app.models.user import User
-from app.schemas.orchestration import SearchRunCreate, SearchRunRead
+from app.osint.profiles import scan_profile_catalog
+from app.schemas.orchestration import (
+    ScanProfileRead,
+    SearchRunCreate,
+    SearchRunRead,
+)
 from app.services.orchestration_service import OrchestrationService
 from app.services.authorization_service import AuthorizationService
 
 
 router = APIRouter(tags=["OSINT Orchestration"])
+
+
+@router.get("/search-profiles", response_model=list[ScanProfileRead])
+def list_search_profiles(
+    current_user: Annotated[
+        User,
+        Depends(require_permission(Permissions.Collection.READ)),
+    ],
+) -> list[ScanProfileRead]:
+    del current_user
+    return [
+        ScanProfileRead.model_validate(item)
+        for item in scan_profile_catalog()
+    ]
 
 
 @router.post(

@@ -14,12 +14,13 @@ intercambiables.
 - Evidencia con procedencia visible, SHA-256, firma HMAC, deduplicación y timestamps.
 - Entidades y relaciones citables a evidencia.
 - Recolección asíncrona mediante colectores desacoplados.
-- Catálogo de 43 perfiles: 42 colectores pasivos para dominio, hostname, IP,
+- Catálogo de 43 módulos: 42 colectores pasivos para dominio, hostname, IP,
   ASN, URL, email, hash, CVE, usuarios y palabras clave —37 sin claves y 5 con
   credenciales— más una validación activa aislada.
 - Sandbox SOC sin shell para una línea base TLS/HTTP de bajo impacto, disponible
   únicamente en pentest autorizado y con alcance explícito.
-- Orquestador Ollama restringido con planes validados, ejecución auditable y
+- Cinco perfiles de orquestación (`auto`, `passive`, `footprint`,
+  `investigate`, `all`) con selección declarativa, planes auditables y
   fallback determinista.
 - Análisis con Ollama: resumen, entidades, relaciones y sentimiento.
 - Linterna SOC con RAG local por proyecto: documentos trazables, embeddings,
@@ -187,6 +188,7 @@ docker compose --profile test run --rm tests python scripts/probe_extended_colle
 - [Preparación para producción](docs/production-readiness.md)
 - [Validación runtime del sandbox (2026-08-30)](docs/runtime-validation-2026-08-30.md)
 - [Orquestación de búsquedas](docs/orchestration.md)
+- [Paridad con SpiderFoot y plataformas OSINT](docs/spiderfoot-parity.md)
 - [LLM y prompts](docs/llm.md)
 - [Pruebas](docs/testing.md)
 - [Checklist de despliegue](docs/deployment-checklist.md)

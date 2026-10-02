@@ -18,8 +18,10 @@ Actualmente ofrece:
 
 - autenticación, sesiones, roles y membresías por proyecto;
 - proyectos e investigaciones separadas por modo operativo;
-- 43 perfiles: 42 colectores pasivos —37 sin clave y 5 opcionales con
+- 43 módulos: 42 colectores pasivos —37 sin clave y 5 opcionales con
   credencial— y 1 validación TLS/HTTP activa aislada;
+- cinco perfiles de escaneo reproducibles equivalentes a los casos de uso de
+  SpiderFoot: automático, pasivo, huella, investigación y completo;
 - observables de dominio, hostname, IP pública, ASN, URL pública, email, hash,
   CVE, usuario y palabra clave;
 - evidencia con procedencia, fecha, SHA-256 y deduplicación;
@@ -44,7 +46,8 @@ no significa “sin tráfico externo”.
 4. El servidor normaliza el blanco. Si se dejó automático, extrae URL, dominio,
    hostname, IP, ASN, email, hash, CVE o `@usuario`; cuando no encuentra uno
    usa la consulta completa como palabra clave.
-5. Ollama sólo puede seleccionar colectores registrados y compatibles. No
+5. El perfil filtra colectores registrados y compatibles. Sólo el perfil
+   automático consulta Ollama; los otros cuatro son deterministas. El modelo no
    ejecuta comandos, no inventa herramientas y no recibe claves de API.
 6. El worker consulta cada fuente de forma secuencial y limitada.
 7. Cada resultado se persiste como evidencia con fuente y hash. La ejecución

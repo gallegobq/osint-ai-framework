@@ -29,6 +29,8 @@ const labels = {
   accepted: "Aceptado", resolved: "Resuelto", false_positive: "Falso positivo",
   attack_surface: "Superficie de ataque", incident_response: "Respuesta a incidentes",
   pentest: "Pentesting autorizado",
+  auto: "Automático", passive: "Pasivo", footprint: "Huella",
+  investigate: "Investigar", all: "Completo",
   playbook: "Playbook", runbook: "Runbook", standard: "Estándar",
   incident: "Incidente", threat_intel: "Inteligencia",
 };
@@ -390,7 +392,7 @@ function focusEvidence(evidenceId) {
 
 function runItem(run) {
   const target = run.targets?.[0];
-  return `<article class="run-item"><header><span class="badge ${run.status}">${label(run.status)}</span><small>${formatDate(run.created_at)}</small></header><p><strong>${escapeHtml(target?.value || "Objetivo")}</strong><br />${escapeHtml(truncate(run.objective, 100))}</p>${run.error ? `<p class="form-error">${escapeHtml(truncate(run.error, 130))}</p>` : ""}</article>`;
+  return `<article class="run-item"><header><span><span class="badge ${run.status}">${label(run.status)}</span> <span class="badge">${label(run.profile)}</span></span><small>${formatDate(run.created_at)}</small></header><p><strong>${escapeHtml(target?.value || "Objetivo")}</strong><br />${escapeHtml(truncate(run.objective, 100))}</p>${run.error ? `<p class="form-error">${escapeHtml(truncate(run.error, 130))}</p>` : ""}</article>`;
 }
 
 function openDialog(id) {
@@ -597,6 +599,9 @@ $("#search-scheduled").addEventListener("change", (event) => {
   $("#search-schedule-fields").hidden = !event.target.checked;
   $("#search-schedule-name").required = event.target.checked;
   $("#search-allow-active").checked = false;
+  if (event.target.checked && $("#search-profile").value === "auto") {
+    $("#search-profile").value = "passive";
+  }
 });
 
 $("#project-form").addEventListener("submit", async (event) => {
@@ -680,6 +685,7 @@ $("#search-form").addEventListener("submit", async (event) => {
     const investigationId = Number($("#search-investigation-id").value);
     const targetType = $("#search-target-type").value;
     const targetValue = $("#search-target-value").value.trim();
+    const profile = $("#search-profile").value;
     const allowActive = !$("#search-active-panel").hidden && $("#search-allow-active").checked;
     const scheduled = $("#search-scheduled").checked;
     if ((targetType && !targetValue) || (!targetType && targetValue)) throw new Error("Selecciona tipo y valor, o deja ambos vacíos para la detección automática.");
@@ -688,9 +694,9 @@ $("#search-form").addEventListener("submit", async (event) => {
     if (scheduled) {
       if (!targets.length) throw new Error("Una búsqueda programada requiere un objetivo explícito.");
       if ($("#search-scope-note").value.trim().length < 10) throw new Error("Describe el alcance autorizado de la vigilancia.");
-      await api(`/investigations/${investigationId}/search-schedules`, { method: "POST", body: JSON.stringify({ name: $("#search-schedule-name").value.trim(), objective: $("#search-objective").value.trim(), targets, max_tools: 40, interval_minutes: Number($("#search-schedule-interval").value), authorization_confirmed: $("#search-authorization").checked, authorization_scope: $("#search-scope-note").value.trim(), enabled: true }) });
+      await api(`/investigations/${investigationId}/search-schedules`, { method: "POST", body: JSON.stringify({ name: $("#search-schedule-name").value.trim(), objective: $("#search-objective").value.trim(), targets, profile, max_tools: 40, interval_minutes: Number($("#search-schedule-interval").value), authorization_confirmed: $("#search-authorization").checked, authorization_scope: $("#search-scope-note").value.trim(), enabled: true }) });
     } else {
-      await api(`/investigations/${investigationId}/search-runs`, { method: "POST", body: JSON.stringify({ objective: $("#search-objective").value.trim(), targets, max_tools: 40, allow_active: allowActive, authorization_confirmed: $("#search-authorization").checked, scope_note: $("#search-scope-note").value.trim() || null }) });
+      await api(`/investigations/${investigationId}/search-runs`, { method: "POST", body: JSON.stringify({ objective: $("#search-objective").value.trim(), targets, profile, max_tools: 40, allow_active: allowActive, authorization_confirmed: $("#search-authorization").checked, scope_note: $("#search-scope-note").value.trim() || null }) });
     }
     $("#search-dialog").close(); showToast(scheduled ? "Vigilancia pasiva programada." : "Búsqueda enviada al orquestador local."); await renderInvestigation(investigationId);
   } catch (error) { const box = $(".dialog-error", form); box.textContent = error.message; box.hidden = false; } finally { button.disabled = false; }

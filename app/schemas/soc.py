@@ -4,6 +4,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.osint.profiles import ScanProfile
 from app.schemas.orchestration import SearchTarget
 
 
@@ -154,6 +155,7 @@ class SearchScheduleCreate(BaseModel):
     name: str = Field(min_length=3, max_length=200)
     objective: str = Field(min_length=5, max_length=2000)
     targets: list[SearchTarget] = Field(min_length=1, max_length=20)
+    profile: ScanProfile = ScanProfile.PASSIVE
     max_tools: int = Field(default=20, ge=1, le=50)
     interval_minutes: int = Field(default=1440, ge=15, le=43200)
     authorization_confirmed: bool
@@ -171,6 +173,7 @@ class SearchScheduleUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=3, max_length=200)
     objective: str | None = Field(default=None, min_length=5, max_length=2000)
     targets: list[SearchTarget] | None = Field(default=None, min_length=1, max_length=20)
+    profile: ScanProfile | None = None
     max_tools: int | None = Field(default=None, ge=1, le=50)
     interval_minutes: int | None = Field(default=None, ge=15, le=43200)
     authorization_scope: str | None = Field(default=None, min_length=10, max_length=5000)
@@ -186,6 +189,7 @@ class SearchScheduleUpdate(BaseModel):
                     "name",
                     "objective",
                     "targets",
+                    "profile",
                     "max_tools",
                     "interval_minutes",
                     "authorization_scope",
@@ -217,6 +221,7 @@ class SearchScheduleRead(BaseModel):
     name: str
     objective: str
     targets: list[dict]
+    profile: ScanProfile
     max_tools: int
     interval_minutes: int
     authorization_scope: str

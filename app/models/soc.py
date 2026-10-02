@@ -96,6 +96,10 @@ class SearchSchedule(BaseModel):
             "max_tools >= 1 AND max_tools <= 50",
             name="ck_search_schedules_max_tools",
         ),
+        CheckConstraint(
+            "profile IN ('auto', 'passive', 'footprint', 'investigate', 'all')",
+            name="ck_search_schedules_profile",
+        ),
     )
 
     investigation_id: Mapped[int] = mapped_column(
@@ -111,6 +115,9 @@ class SearchSchedule(BaseModel):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     objective: Mapped[str] = mapped_column(Text, nullable=False)
     targets: Mapped[list] = mapped_column(JSON, nullable=False)
+    profile: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="passive", index=True
+    )
     max_tools: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
     interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     authorization_scope: Mapped[str] = mapped_column(Text, nullable=False)

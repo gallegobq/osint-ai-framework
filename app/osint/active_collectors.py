@@ -19,6 +19,7 @@ class SandboxTlsHttpBaselineCollector(Collector):
     target_types = frozenset({"domain", "hostname"})
     query_field = "hostname"
     passive = False
+    profiles = frozenset({"footprint"})
 
     def availability(self) -> tuple[bool, str | None]:
         if not settings.soc_sandbox_enabled:

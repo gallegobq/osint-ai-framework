@@ -19,6 +19,8 @@
   independiente, red dedicada, alcance exacto y evidencia normalizada.
 - Base RAG SOC de Linterna aislada por proyecto, con documentos trazables,
   embeddings locales, recuperación híbrida y citas validadas.
+- Perfiles de escaneo `auto`, `passive`, `footprint`, `investigate` y `all`,
+  persistidos tanto en ejecuciones únicas como en vigilancias programadas.
 
 ## Próximos incrementos recomendados
 
@@ -34,6 +36,11 @@
 
 ### Investigación
 
+- Bus de eventos tipado para encadenar módulos por observables derivados y
+  conservar la ruta completa de descubrimiento.
+- Reglas de correlación declarativas, versionadas y explicables, con ejecución
+  batch primero e incremental después.
+- Playbooks versionados, cancelación/reintento por módulo y perfiles clonables.
 - Comentarios, etiquetas, timeline y revisión/aprobación de hallazgos.
 - Promoción controlada de candidatos LLM a entidades verificadas.
 - Búsqueda full-text PostgreSQL y grafo especializado si el volumen lo exige.

@@ -114,6 +114,7 @@ def run_due_search_schedules() -> dict:
                     SearchRunCreate(
                         objective=current.objective,
                         targets=current.targets,
+                        profile=current.profile,
                         max_tools=current.max_tools,
                         allow_active=False,
                         authorization_confirmed=True,

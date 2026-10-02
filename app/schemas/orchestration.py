@@ -3,6 +3,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.osint.profiles import ScanProfile
+
 
 class SearchTargetType(StrEnum):
     DOMAIN = "domain"
@@ -25,6 +27,7 @@ class SearchTarget(BaseModel):
 class SearchRunCreate(BaseModel):
     objective: str = Field(min_length=5, max_length=2000)
     targets: list[SearchTarget] = Field(default_factory=list, max_length=20)
+    profile: ScanProfile = ScanProfile.AUTO
     max_tools: int = Field(default=40, ge=1, le=50)
     allow_active: bool = False
     authorization_confirmed: bool
@@ -70,6 +73,7 @@ class SearchRunRead(BaseModel):
     requested_by_id: int
     objective: str
     targets: list[dict]
+    profile: ScanProfile
     max_tools: int
     allow_active: bool
     policy: dict
@@ -81,3 +85,11 @@ class SearchRunRead(BaseModel):
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime
+
+
+class ScanProfileRead(BaseModel):
+    name: ScanProfile
+    label: str
+    description: str
+    deterministic: bool
+    passive_only: bool

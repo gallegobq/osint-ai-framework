@@ -63,8 +63,8 @@ ser pertinente en investigaciones distintas sin crear acoplamiento entre casos.
 ## Trabajos y auditoría
 
 - `collection_jobs`: consulta normalizada, intentos, estado y evidencia creada.
-- `search_runs`: objetivo, blancos normalizados, política, plan de Ollama,
-  resumen y estado agregado; enlaza los `collection_jobs` hijos.
+- `search_runs`: objetivo, blancos normalizados, perfil inmutable, política,
+  plan, resumen y estado agregado; enlaza los `collection_jobs` hijos.
 - `analysis_jobs`: proveedor, versión de prompt, salida y requisito de revisión.
 - `audit_events`: actor, acción, tipo/ID de recurso y metadatos no sensibles.
 

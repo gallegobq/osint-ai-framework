@@ -52,6 +52,12 @@ def main() -> None:
                     "title": f"Authorized example.com search {suffix}",
                     "kind": "domain",
                     "priority": "low",
+                    "jurisdiction": "Synthetic test environment",
+                    "legal_basis": (
+                        "Authorized automated verification using the IANA "
+                        "reserved example.com domain."
+                    ),
+                    "data_classification": "internal",
                 },
             )
             investigation_response.raise_for_status()
@@ -66,6 +72,7 @@ def main() -> None:
                         "for example.com"
                     ),
                     "targets": [{"type": "domain", "value": "example.com"}],
+                    "profile": "footprint",
                     "max_tools": 3,
                     "allow_active": False,
                     "authorization_confirmed": True,
@@ -74,6 +81,8 @@ def main() -> None:
             )
             run_response.raise_for_status()
             run = run_response.json()
+            if run.get("profile") != "footprint":
+                raise RuntimeError("Requested search profile was not persisted.")
 
             deadline = time.monotonic() + 180
             while run["status"] not in TERMINAL_STATUSES:
@@ -87,6 +96,8 @@ def main() -> None:
                 response.raise_for_status()
                 run = response.json()
 
+            if run.get("planner") != "profile:footprint":
+                raise RuntimeError("Search profile did not use deterministic planning.")
             summary = run.get("result_summary") or {}
             if run["status"] not in {"succeeded", "partial"}:
                 raise RuntimeError("All orchestrated collectors failed.")

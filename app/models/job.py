@@ -68,6 +68,10 @@ class SearchRun(BaseModel):
             name="ck_search_runs_status",
         ),
         CheckConstraint("max_tools >= 1", name="ck_search_runs_max_tools"),
+        CheckConstraint(
+            "profile IN ('auto', 'passive', 'footprint', 'investigate', 'all')",
+            name="ck_search_runs_profile",
+        ),
     )
 
     investigation_id: Mapped[int] = mapped_column(
@@ -82,6 +86,9 @@ class SearchRun(BaseModel):
     )
     objective: Mapped[str] = mapped_column(Text, nullable=False)
     targets: Mapped[list] = mapped_column(JSON, nullable=False)
+    profile: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="auto", index=True
+    )
     max_tools: Mapped[int] = mapped_column(Integer, nullable=False)
     allow_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False

@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from app.core.exceptions import BadRequestException
 from app.llm.contracts import LLMProvider
 from app.osint.planner import SearchPlanner
+from app.osint.profiles import ScanProfile, scan_profile_catalog
 from app.osint.registry import CollectorRegistry
 from app.osint.targets import (
     infer_targets,
@@ -18,6 +19,7 @@ from app.osint.targets import (
     normalize_public_url,
 )
 from app.schemas.orchestration import SearchRunCreate
+from app.schemas.soc import SearchScheduleCreate
 
 
 class FakeProvider(LLMProvider):
@@ -63,6 +65,41 @@ def test_search_requires_authorization_confirmation() -> None:
         )
 
 
+def test_search_profile_contract_is_closed_and_defaults_to_auto() -> None:
+    request = SearchRunCreate(
+        objective="Research example.com",
+        targets=[{"type": "domain", "value": "example.com"}],
+        authorization_confirmed=True,
+    )
+
+    assert request.profile is ScanProfile.AUTO
+    assert [item["name"] for item in scan_profile_catalog()] == [
+        "auto",
+        "passive",
+        "footprint",
+        "investigate",
+        "all",
+    ]
+    with pytest.raises(ValidationError):
+        SearchRunCreate(
+            objective="Research example.com",
+            profile="unbounded",
+            authorization_confirmed=True,
+        )
+
+
+def test_scheduled_searches_default_to_reproducible_passive_profile() -> None:
+    schedule = SearchScheduleCreate(
+        name="Daily example.com watch",
+        objective="Monitor public infrastructure changes",
+        targets=[{"type": "domain", "value": "example.com"}],
+        authorization_confirmed=True,
+        authorization_scope="Authorized synthetic monitoring scope.",
+    )
+
+    assert schedule.profile is ScanProfile.PASSIVE
+
+
 def test_objective_can_infer_typed_targets() -> None:
     assert infer_targets("Revisar https://example.com y AS15169") == [
         {"type": "url", "value": "https://example.com/"},
@@ -87,8 +124,65 @@ def test_registry_exposes_available_and_keyed_tools_without_secrets() -> None:
     assert sum(item["available"] for item in descriptions) >= 33
     shodan = next(item for item in descriptions if item["name"] == "ip_shodan")
     assert shodan["requires_api_key"] is True
+    assert "footprint" in shodan["profiles"]
+    assert "all" in shodan["profiles"]
     assert "SHODAN_API_KEY" in str(shodan["unavailable_reason"])
     assert "key=" not in str(descriptions)
+
+
+def test_passive_profile_is_deterministic_and_excludes_active_collectors() -> None:
+    provider = Mock(spec=LLMProvider)
+    plan = SearchPlanner(CollectorRegistry(), provider).plan(
+        objective="Map the public infrastructure",
+        targets=[{"type": "domain", "value": "example.com"}],
+        max_tools=50,
+        allow_active=True,
+        profile=ScanProfile.PASSIVE,
+    )
+
+    assert plan.planner == "profile:passive"
+    assert plan.steps
+    assert all(
+        CollectorRegistry().get(
+            step["collector"],
+            require_available=False,
+        ).passive
+        for step in plan.steps
+    )
+    provider.generate_json.assert_not_called()
+
+
+def test_footprint_profile_selects_only_declared_modules() -> None:
+    registry = CollectorRegistry()
+    plan = SearchPlanner(registry, Mock(spec=LLMProvider)).plan(
+        objective="Map the public infrastructure",
+        targets=[{"type": "domain", "value": "example.com"}],
+        max_tools=50,
+        allow_active=False,
+        profile=ScanProfile.FOOTPRINT,
+    )
+
+    assert plan.planner == "profile:footprint"
+    assert plan.steps
+    assert all(
+        registry.get(step["collector"]).supports_profile("footprint")
+        for step in plan.steps
+    )
+
+
+def test_deterministic_profiles_share_budget_across_targets() -> None:
+    plan = SearchPlanner(CollectorRegistry(), Mock(spec=LLMProvider)).plan(
+        objective="Map two authorized public targets",
+        targets=[
+            {"type": "domain", "value": "example.com"},
+            {"type": "ip", "value": "8.8.8.8"},
+        ],
+        max_tools=2,
+        allow_active=False,
+        profile=ScanProfile.PASSIVE,
+    )
+
+    assert {step["target_index"] for step in plan.steps} == {0, 1}
 
 
 def test_ollama_plan_is_restricted_to_compatible_allowlisted_tools() -> None:

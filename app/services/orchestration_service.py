@@ -76,6 +76,7 @@ class OrchestrationService:
                 requested_by_id=actor.id,
                 objective=" ".join(data.objective.split()),
                 targets=targets,
+                profile=data.profile.value,
                 max_tools=data.max_tools,
                 allow_active=data.allow_active,
                 policy={
@@ -86,6 +87,7 @@ class OrchestrationService:
                         "soc-sandbox" if data.allow_active else "passive-collectors"
                     ),
                     "operation_mode": investigation.operation_mode,
+                    "profile": data.profile.value,
                     "active_testing_authorized": (
                         investigation.active_testing_authorized
                     ),
@@ -113,6 +115,7 @@ class OrchestrationService:
                 "max_tools": data.max_tools,
                 "allow_active": data.allow_active,
                 "operation_mode": investigation.operation_mode,
+                "profile": data.profile.value,
             },
         )
         self.repository.commit()

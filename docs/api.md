@@ -105,15 +105,17 @@ Respuesta inicial: HTTP 202 y estado `queued`.
 
 | Método | Ruta | Permiso |
 |---|---|---|
+| GET | `/search-profiles` | `collection:read` |
 | POST | `/investigations/{id}/search-runs` | `collection:execute` |
 | GET | `/investigations/{id}/search-runs` | `collection:read` |
 | GET | `/search-runs/{id}` | `collection:read` |
 
-La creación exige `authorization_confirmed=true`, blancos tipados y un límite
-de herramientas. Ollama propone el plan y el servidor valida cada paso contra
-el catálogo, el tipo de blanco, disponibilidad, modo pasivo y límites. HTTP 202
-no significa que la búsqueda terminó; consulta el recurso hasta `succeeded`,
-`partial` o `failed`.
+La creación exige `authorization_confirmed=true` y un límite de herramientas;
+los blancos tipados son opcionales. `profile` admite `auto`, `passive`,
+`footprint`, `investigate` y `all`. Sólo `auto` consulta Ollama. El servidor
+valida cada paso contra catálogo, perfil, tipo de blanco, disponibilidad,
+política activa y límites. HTTP 202 no significa que la búsqueda terminó;
+consulta el recurso hasta `succeeded`, `partial` o `failed`.
 
 `allow_active=true` sólo es aceptado para un pentest autorizado cuya ventana
 está vigente y requiere además una `scope_note` específica. El worker repite la

@@ -215,6 +215,7 @@ class SocService:
                 name=data.name,
                 objective=" ".join(data.objective.split()),
                 targets=targets,
+                profile=data.profile.value,
                 max_tools=data.max_tools,
                 interval_minutes=data.interval_minutes,
                 authorization_scope=data.authorization_scope.strip(),
@@ -269,6 +270,8 @@ class SocService:
                 }
                 for target in data.targets
             ]
+        if values.get("profile") is not None:
+            values["profile"] = values["profile"].value
         if values.get("objective") is not None:
             values["objective"] = " ".join(values["objective"].split())
         if values.get("authorization_scope") is not None:

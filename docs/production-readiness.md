@@ -105,13 +105,14 @@ jurisdicciones aplicables.
 
 ## Evidencia local más reciente
 
-El 2026-09-30 aprobaron 137 pruebas y Ruff. El benchmark de liveness ejecutó
-1.500 solicitudes sin errores, con p95 mediano de 321,59 ms frente al umbral
-local de 1000 ms. La medición anterior de 2286 ms incluía el fallback IPv6 de
-`localhost` a la publicación IPv4 de Docker y no representaba tiempo del
-servidor. Una lectura autenticada de proyectos obtuvo p95 de 281,42 ms sin
-errores. Capacidad continúa abierta hasta medir un usuario no superadministrador
-y datos de cardinalidad fija. Véase `docs/runtime-validation-2026-09-29.md`.
+El 2026-10-01 aprobaron 142 pruebas y Ruff. El benchmark de liveness más
+reciente ejecutó 1.500 solicitudes sin errores, con p95 mediano de 321,59 ms
+frente al umbral local de 1000 ms. La medición anterior de 2286 ms incluía el
+fallback IPv6 de `localhost` a la publicación IPv4 de Docker y no representaba
+tiempo del servidor. Una lectura autenticada de proyectos obtuvo p95 de
+281,42 ms sin errores. Capacidad continúa abierta hasta medir un usuario no
+superadministrador y datos de cardinalidad fija. Véase
+`docs/runtime-validation-2026-09-29.md`.
 
 La evidencia de backup y restauración aislada del 2026-08-16 sigue vigente y
 se conserva en `docs/runtime-validation-2026-08-16.md`.

@@ -42,6 +42,7 @@ class DomainDnsRecordsCollector(Collector):
     target_types = frozenset({"domain", "hostname"})
     query_field = "domain"
     record_types = ("A", "AAAA", "MX", "NS", "TXT", "CNAME", "SOA", "CAA")
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -91,6 +92,7 @@ class DomainCertificateTransparencyCollector(Collector):
     description = "Finds certificate transparency entries and public subdomain names."
     target_types = frozenset({"domain", "hostname"})
     query_field = "domain"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -157,6 +159,7 @@ class DomainWaybackCollector(Collector):
     description = "Lists public historical captures from the Wayback Machine CDX index."
     target_types = frozenset({"domain", "hostname"})
     query_field = "domain"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -204,6 +207,7 @@ class UrlWaybackCollector(Collector):
     description = "Lists public historical captures for one HTTP(S) URL."
     target_types = frozenset({"url"})
     query_field = "url"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -248,6 +252,7 @@ class UrlscanDomainCollector(Collector):
     description = "Searches existing public urlscan.io observations for a domain."
     target_types = frozenset({"domain", "hostname"})
     query_field = "domain"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -295,6 +300,7 @@ class IpRdapCollector(Collector):
     description = "Retrieves public registration data for an IP address through RDAP."
     target_types = frozenset({"ip"})
     query_field = "ip"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -327,6 +333,7 @@ class IpReverseDnsCollector(Collector):
     description = "Resolves the public PTR hostname associated with an IP address."
     target_types = frozenset({"ip"})
     query_field = "ip"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -380,6 +387,7 @@ class IpRipeStatCollector(Collector):
     description = "Retrieves routing, prefix and registry context from RIPEstat."
     target_types = frozenset({"ip"})
     query_field = "ip"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -415,6 +423,7 @@ class AsnRdapCollector(Collector):
     description = "Retrieves public registration data for an ASN through RDAP."
     target_types = frozenset({"asn"})
     query_field = "asn"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -447,6 +456,7 @@ class AsnRipeStatCollector(Collector):
     description = "Retrieves overview, prefixes and routing status for an ASN."
     target_types = frozenset({"asn"})
     query_field = "asn"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -482,6 +492,7 @@ class AsnPeeringDbCollector(Collector):
     description = "Retrieves public network and peering metadata for an ASN."
     target_types = frozenset({"asn"})
     query_field = "asn"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()

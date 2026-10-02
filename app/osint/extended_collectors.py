@@ -67,6 +67,7 @@ class DomainCertSpotterCollector(Collector):
     description = "Finds certificate-transparency issuances and DNS names via Cert Spotter."
     target_types = frozenset({"domain", "hostname"})
     query_field = "domain"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
@@ -104,6 +105,7 @@ class DomainCertSpotterCollector(Collector):
 
 
 class _CommonCrawlCollector(Collector):
+    profiles = frozenset({"footprint", "investigate"})
     index_catalog_url = "https://index.commoncrawl.org/collinfo.json"
     index_host = "index.commoncrawl.org"
 
@@ -201,6 +203,7 @@ class IpShodanInternetDbCollector(Collector):
     description = "Retrieves Shodan InternetDB ports, hostnames, CPEs, tags and CVE identifiers without a key."
     target_types = frozenset({"ip"})
     query_field = "ip"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()

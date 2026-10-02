@@ -11,6 +11,7 @@ class DomainDnsCollector(Collector):
     description = "Resolves public A and AAAA records for a domain."
     target_types = frozenset({"domain", "hostname"})
     query_field = "domain"
+    profiles = frozenset({"footprint", "investigate"})
 
     def validate_query(self, query: dict) -> dict:
         return {"domain": normalize_domain(query.get("domain"))}
@@ -38,6 +39,7 @@ class DomainRdapCollector(Collector):
     description = "Retrieves public registration data through RDAP."
     target_types = frozenset({"domain"})
     query_field = "domain"
+    profiles = frozenset({"footprint", "investigate"})
 
     def __init__(self, client: SafeHttpClient | None = None):
         self.client = client or SafeHttpClient()
