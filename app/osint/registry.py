@@ -51,6 +51,7 @@ from app.osint.soc_collectors import (
     FirstEpssCollector,
     NvdCveCollector,
 )
+from app.osint.vulnerability_collectors import public_vulnerability_collectors
 
 
 SPIDERFOOT_REFERENCE_MODULES = 232
@@ -110,6 +111,7 @@ def default_collectors() -> list[Collector]:
         VirusTotalHashCollector(),
         SecurityTrailsDomainCollector(),
         *public_module_pack(),
+        *public_vulnerability_collectors(),
     ]
 
 

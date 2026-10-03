@@ -1,6 +1,6 @@
 # Paridad de Linterna con SpiderFoot y plataformas OSINT
 
-Fecha de corte: 2026-10-02. Esta matriz separa lo implementado de lo planeado;
+Fecha de corte: 2026-10-03. Esta matriz separa lo implementado de lo planeado;
 no presenta una aspiración como funcionalidad disponible.
 
 ## Referencias comparadas
@@ -40,7 +40,7 @@ no presenta una aspiración como funcionalidad disponible.
 | Playbooks/pivots | IntelOwl | perfiles disponibles; falta DAG versionado y condiciones | Pendiente |
 | Marketplace aislado | Recon-ng | registro cerrado en código; falta SDK firmado y sandbox por módulo | Pendiente |
 | Conectores bidireccionales | OpenCTI / IntelOwl | exportación por archivo; falta entrega durable a MISP/OpenCTI/SIEM | Pendiente |
-| Amplitud de módulos | SpiderFoot | 62 módulos ejecutables únicos frente a 232; objetivo Linterna: 233 | Parcial |
+| Amplitud de módulos | SpiderFoot | 67 módulos ejecutables únicos frente a 232; objetivo Linterna: 233 | Parcial |
 
 ## Orden de implementación
 

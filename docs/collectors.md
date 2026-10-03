@@ -29,7 +29,7 @@ autorización.
 | URL pública | Wayback, Common Crawl | — |
 | Hostname | DNS, CT, Wayback, Common Crawl, urlscan.io, Cert Spotter | VirusTotal |
 | Email | MX/TXT del dominio; nunca transmite la parte local | — |
-| CVE | NIST NVD, CISA KEV, FIRST EPSS | — |
+| CVE | NIST NVD, CISA KEV, FIRST EPSS, CVE Program/MITRE, Red Hat, SUSE CSAF VEX, GitHub Advisory y estado Ubuntu/Canonical | — |
 | Hash MD5/SHA-1/SHA-256 | — | VirusTotal |
 | Usuario | GitHub, repositorios GitHub, GitLab, Bluesky, Hacker News, paquetes npm | — |
 | Palabra clave | Wikidata, Wikipedia, OpenAlex, GDELT, Crossref, Open Library, Stack Overflow, Europe PMC, Google Books, Hacker News | — |
@@ -37,7 +37,7 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 62 adaptadores: 56 públicos sin clave, 5 opcionales
+El catálogo actual suma 67 adaptadores: 61 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -50,6 +50,13 @@ tipos DNS que ya cubría el colector agregado:
   Emerging Threats y CINS Army;
 - enriquecimiento IP de ipapi.co, hashes conocidos de CIRCL, identidades
   Keybase, organizaciones GLEIF y host search de HackerTarget.
+
+El segundo paquete añade cinco vistas de vulnerabilidad complementarias y
+validadas por identidad: el registro canónico del CVE Program, estados de
+producto de Red Hat y Ubuntu/Canonical, SUSE CSAF VEX y GitHub Global
+Advisories. Se omiten los campos que duplican las capacidades dedicadas NVD,
+CISA KEV y FIRST EPSS, y las respuestas de proveedor se conservan con límites
+recursivos de tamaño y profundidad.
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante

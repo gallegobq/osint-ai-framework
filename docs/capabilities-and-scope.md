@@ -18,7 +18,7 @@ Actualmente ofrece:
 
 - autenticación, sesiones, roles y membresías por proyecto;
 - proyectos e investigaciones separadas por modo operativo;
-- 62 módulos: 61 colectores pasivos —56 sin clave y 5 opcionales con
+- 67 módulos: 66 colectores pasivos —61 sin clave y 5 opcionales con
   credencial— y 1 validación TLS/HTTP activa aislada;
 - cinco perfiles de escaneo reproducibles equivalentes a los casos de uso de
   SpiderFoot: automático, pasivo, huella, investigación y completo;

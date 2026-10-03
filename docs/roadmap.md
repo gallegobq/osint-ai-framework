@@ -24,7 +24,8 @@
 - Grafo de descubrimientos opt-in con eventos tipados, linaje a evidencia,
   deduplicación y encadenamiento exclusivamente pasivo y acotado.
 - Primer paquete de expansión con 19 módulos públicos no duplicados y benchmark
-  automático: 62 registrados frente al objetivo verificable de 233.
+  automático, seguido por cinco módulos de estado CVE de proveedores: 67
+  registrados frente al objetivo verificable de 233.
 
 ## Próximos incrementos recomendados
 
