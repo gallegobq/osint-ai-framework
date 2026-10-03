@@ -60,6 +60,10 @@ class Collector(ABC):
     requires_api_key: bool = False
     profiles: frozenset[str] = frozenset({ScanProfile.INVESTIGATE.value})
     emitted_target_types: frozenset[str] = frozenset()
+    provider: str | None = None
+    reference_url: str | None = None
+    module_family: str = "source"
+    capability_id: str | None = None
 
     def availability(self) -> tuple[bool, str | None]:
         """Return runtime availability without exposing secret configuration."""
@@ -77,6 +81,10 @@ class Collector(ABC):
             "requires_api_key": self.requires_api_key,
             "profiles": self.supported_profiles(),
             "emitted_target_types": sorted(self.emitted_target_types),
+            "provider": self.provider,
+            "reference_url": self.reference_url,
+            "module_family": self.module_family,
+            "capability_id": self.capability_id or self.name,
             "available": available,
             "unavailable_reason": reason,
         }

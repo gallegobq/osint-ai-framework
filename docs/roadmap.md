@@ -23,6 +23,8 @@
   persistidos tanto en ejecuciones únicas como en vigilancias programadas.
 - Grafo de descubrimientos opt-in con eventos tipados, linaje a evidencia,
   deduplicación y encadenamiento exclusivamente pasivo y acotado.
+- Primer paquete de expansión con 19 módulos públicos no duplicados y benchmark
+  automático: 62 registrados frente al objetivo verificable de 233.
 
 ## Próximos incrementos recomendados
 

@@ -86,6 +86,7 @@ La deduplicación usa `(investigation_id, SHA-256 canónico)`.
 | Método | Ruta | Permiso |
 |---|---|---|
 | GET | `/collectors` | `collection:read` |
+| GET | `/collectors/benchmark` | `collection:read` |
 | POST | `/investigations/{id}/collection-jobs` | `collection:execute` |
 | GET | `/investigations/{id}/collection-jobs` | `collection:read` |
 | GET | `/collection-jobs/{id}` | `collection:read` |
@@ -100,6 +101,13 @@ Ejemplo:
 ```
 
 Respuesta inicial: HTTP 202 y estado `queued`.
+
+El benchmark usa como referencia los 232 módulos cargables de SpiderFoot en el
+commit fijado: 233 archivos `modules/sfp_*.py` menos `sfp_template.py`. El
+objetivo de Linterna es 233. Reporta por
+separado capacidades registradas, módulos configurados y salud en vivo. La
+referencia queda fijada al commit indicado por `reference_commit`; alcanzar el
+conteo no equivale a superar la compuerta de certificación.
 
 ## Orquestación de búsquedas
 

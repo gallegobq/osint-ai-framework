@@ -27,6 +27,20 @@ def list_collectors(
     return service.available_collectors()
 
 
+@router.get("/collectors/benchmark")
+def collector_benchmark(
+    _current_user: Annotated[
+        User,
+        Depends(require_permission(Permissions.Collection.READ)),
+    ],
+    service: Annotated[
+        CollectionService,
+        Depends(get_collection_service),
+    ],
+) -> dict[str, object]:
+    return service.registry.benchmark()
+
+
 @router.post(
     "/investigations/{investigation_id}/collection-jobs",
     response_model=CollectionJobRead,

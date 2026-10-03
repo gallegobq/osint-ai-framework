@@ -5,8 +5,9 @@ no presenta una aspiración como funcionalidad disponible.
 
 ## Referencias comparadas
 
-- SpiderFoot OSS documenta más de 200 módulos, publicación/suscripción entre
-  módulos, perfiles por caso de uso, visualizaciones y exportaciones
+- El commit SpiderFoot OSS de referencia contiene 233 archivos `sfp_*.py`;
+  al excluir su plantilla quedan 232 módulos cargables. También ofrece
+  publicación/suscripción entre módulos, perfiles, visualizaciones y exportaciones
   CSV/JSON/GEXF en su [repositorio oficial](https://github.com/smicallef/spiderfoot#readme).
 - Su [plantilla oficial de módulo](https://github.com/smicallef/spiderfoot/blob/master/modules/sfp_template.py)
   muestra cómo un evento producido conserva el evento padre y notifica a los
@@ -39,7 +40,7 @@ no presenta una aspiración como funcionalidad disponible.
 | Playbooks/pivots | IntelOwl | perfiles disponibles; falta DAG versionado y condiciones | Pendiente |
 | Marketplace aislado | Recon-ng | registro cerrado en código; falta SDK firmado y sandbox por módulo | Pendiente |
 | Conectores bidireccionales | OpenCTI / IntelOwl | exportación por archivo; falta entrega durable a MISP/OpenCTI/SIEM | Pendiente |
-| Amplitud de módulos | SpiderFoot | 43 módulos frente a más de 200 | Parcial |
+| Amplitud de módulos | SpiderFoot | 62 módulos ejecutables únicos frente a 232; objetivo Linterna: 233 | Parcial |
 
 ## Orden de implementación
 

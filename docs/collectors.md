@@ -37,9 +37,25 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 43 adaptadores: 37 públicos sin clave, 5 opcionales
+El catálogo actual suma 62 adaptadores: 56 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
+
+El primer paquete de expansión añade 19 módulos ejecutables sin duplicar los
+tipos DNS que ya cubría el colector agregado:
+
+- ocho consultas DNS especializadas para DS, DNSKEY, HTTPS, DMARC, SPF,
+  MTA-STS, TLS-RPT y BIMI, más descubrimiento acotado de servicios SRV comunes;
+- cinco verificaciones exactas en listas IP de Tor, Feodo Tracker, IPsum,
+  Emerging Threats y CINS Army;
+- enriquecimiento IP de ipapi.co, hashes conocidos de CIRCL, identidades
+  Keybase, organizaciones GLEIF y host search de HackerTarget.
+
+`GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
+módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante
+y metodología. La configuración no se presenta como salud operativa: ésta exige
+sondeos en vivo. Alcanzar el número objetivo tampoco activa por sí solo la
+paridad; la certificación final es una compuerta separada.
 
 Los datos de vulnerabilidad proceden de APIs primarias: NVD CVE 2.0, el
 catálogo CISA Known Exploited Vulnerabilities y FIRST EPSS. Un CVE no incluido

@@ -14,9 +14,12 @@ intercambiables.
 - Evidencia con procedencia visible, SHA-256, firma HMAC, deduplicación y timestamps.
 - Entidades y relaciones citables a evidencia.
 - Recolección asíncrona mediante colectores desacoplados.
-- Catálogo de 43 módulos: 42 colectores pasivos para dominio, hostname, IP,
-  ASN, URL, email, hash, CVE, usuarios y palabras clave —37 sin claves y 5 con
+- Catálogo de 62 módulos: 61 colectores pasivos para dominio, hostname, IP,
+  ASN, URL, email, hash, CVE, usuarios y palabras clave —56 sin claves y 5 con
   credenciales— más una validación activa aislada.
+- Benchmark automático contra los 232 módulos cargables de SpiderFoot, con
+  objetivo público de 233, referencia fijada a un commit y separación entre
+  catálogo, configuración, salud en vivo y certificación final.
 - Sandbox SOC sin shell para una línea base TLS/HTTP de bajo impacto, disponible
   únicamente en pentest autorizado y con alcance explícito.
 - Cinco perfiles de orquestación (`auto`, `passive`, `footprint`,

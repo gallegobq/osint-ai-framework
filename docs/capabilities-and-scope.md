@@ -18,7 +18,7 @@ Actualmente ofrece:
 
 - autenticación, sesiones, roles y membresías por proyecto;
 - proyectos e investigaciones separadas por modo operativo;
-- 43 módulos: 42 colectores pasivos —37 sin clave y 5 opcionales con
+- 62 módulos: 61 colectores pasivos —56 sin clave y 5 opcionales con
   credencial— y 1 validación TLS/HTTP activa aislada;
 - cinco perfiles de escaneo reproducibles equivalentes a los casos de uso de
   SpiderFoot: automático, pasivo, huella, investigación y completo;
@@ -27,6 +27,8 @@ Actualmente ofrece:
   opt-in y tiene profundidad acotada;
 - observables de dominio, hostname, IP pública, ASN, URL pública, email, hash,
   CVE, usuario y palabra clave;
+- benchmark reproducible contra los 232 módulos cargables del árbol público de
+  SpiderFoot, fijado a un commit y con umbral de superación en 233;
 - evidencia con procedencia, fecha, SHA-256 y deduplicación;
 - análisis local con Ollama y fallback determinista si el modelo falla;
 - hallazgos SOC con severidad, estado, confianza y remediación;
