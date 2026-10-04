@@ -29,7 +29,7 @@ autorización.
 | URL pública | Wayback, Common Crawl | — |
 | Hostname | DNS, CT, Wayback, Common Crawl, urlscan.io, Cert Spotter | VirusTotal |
 | Email | MX/TXT del dominio; nunca transmite la parte local | — |
-| CVE | NIST NVD, CISA KEV, FIRST EPSS, CVE Program/MITRE, Red Hat, SUSE CSAF VEX, GitHub Advisory y estado Ubuntu/Canonical | — |
+| CVE | NIST NVD, CISA KEV y SSVC, FIRST EPSS, CVE Program/MITRE, Red Hat, SUSE CSAF VEX, GitHub Advisory, Ubuntu/Canonical, Debian y rangos Git de OSV | — |
 | Hash MD5/SHA-1/SHA-256 | — | VirusTotal |
 | Usuario | GitHub, repositorios GitHub, GitLab, Bluesky, Hacker News, paquetes npm | — |
 | Palabra clave | Wikidata, Wikipedia, OpenAlex, GDELT, Crossref, Open Library, Stack Overflow, Europe PMC, Google Books, Hacker News | — |
@@ -37,7 +37,7 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 67 adaptadores: 61 públicos sin clave, 5 opcionales
+El catálogo actual suma 70 adaptadores: 64 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -57,6 +57,12 @@ producto de Red Hat y Ubuntu/Canonical, SUSE CSAF VEX y GitHub Global
 Advisories. Se omiten los campos que duplican las capacidades dedicadas NVD,
 CISA KEV y FIRST EPSS, y las respuestas de proveedor se conservan con límites
 recursivos de tamaño y profundidad.
+
+El tercer paquete añade estado de paquetes y versiones corregidas de Debian,
+los puntos de decisión SSVC publicados por CISA y los rangos de commits Git de
+OSV. Cada adaptador conserva sólo la proyección exclusiva de esa fuente:
+excluye descripciones, CVSS, KEV, CPE y metadatos ya cubiertos por módulos
+dedicados.
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante
