@@ -4,9 +4,12 @@ from app.core.exceptions import BadRequestException
 from app.osint.network_range_collectors import (
     AtlassianRangeCollector,
     CloudflareRangeCollector,
+    DigitalOceanRangeCollector,
     FastlyRangeCollector,
     GitHubRangeCollector,
     GoogleCloudRangeCollector,
+    GoogleServicesRangeCollector,
+    Microsoft365RangeCollector,
     OracleCloudRangeCollector,
     public_network_range_collectors,
 )
@@ -69,6 +72,59 @@ def atlassian_payload() -> dict[str, object]:
     }
 
 
+def google_services_payload() -> dict[str, object]:
+    prefixes = [
+        "8.8.4.0/24",
+        "8.8.8.0/24",
+        "35.190.0.0/17",
+        "64.233.160.0/19",
+        "66.102.0.0/20",
+        "72.14.192.0/18",
+        "74.125.0.0/16",
+        "108.177.8.0/21",
+        "142.250.0.0/15",
+        "2001:4860::/32",
+    ]
+    return {
+        "syncToken": "789",
+        "creationTime": "2026-10-04T00:00:00.000000",
+        "prefixes": [
+            {"ipv6Prefix" if ":" in prefix else "ipv4Prefix": prefix}
+            for prefix in prefixes
+        ],
+    }
+
+
+def digitalocean_feed() -> str:
+    return "\n".join(
+        f"5.101.{octet}.0/24,NL,NL-NH,Amsterdam,1098 XH"
+        for octet in range(96, 106)
+    )
+
+
+def microsoft_365_payload() -> list[dict[str, object]]:
+    records: list[dict[str, object]] = []
+    for index in range(10):
+        duplicate = index == 1
+        records.append(
+            {
+                "id": index + 1,
+                "serviceArea": "SharePoint" if duplicate else "Exchange",
+                "serviceAreaDisplayName": (
+                    "SharePoint Online" if duplicate else "Exchange Online"
+                ),
+                "category": "Allow" if duplicate else "Optimize",
+                "required": True,
+                "ips": [
+                    "13.107.0.0/24"
+                    if duplicate
+                    else f"13.107.{index}.0/24"
+                ],
+            }
+        )
+    return records
+
+
 class RangeClient:
     def __init__(self) -> None:
         self.calls: list[tuple[str, dict]] = []
@@ -95,12 +151,16 @@ class RangeClient:
                     "2405:8100::/32",
                 ]
             )
+        if "digitalocean.com" in url:
+            return digitalocean_feed()
         raise AssertionError(f"Unexpected URL: {url}")
 
     def get_json(self, url: str, **kwargs) -> object:
         self.calls.append((url, kwargs))
         if "api.github.com" in url:
             return github_payload()
+        if url.endswith("/goog.json"):
+            return google_services_payload()
         if "fastly.com" in url:
             return {
                 "addresses": ["23.235.32.0/20", "151.101.0.0/16"],
@@ -123,6 +183,8 @@ class RangeClient:
             return oracle_payload()
         if "ip-ranges.atlassian.com" in url:
             return atlassian_payload()
+        if "endpoints.office.com" in url:
+            return microsoft_365_payload()
         raise AssertionError(f"Unexpected URL: {url}")
 
 
@@ -145,9 +207,9 @@ class StaticJsonClient:
 def test_public_network_range_pack_is_unique_passive_and_traceable() -> None:
     modules = public_network_range_collectors(RangeClient())
 
-    assert len(modules) == 6
-    assert len({module.name for module in modules}) == 6
-    assert len({module.capability_id for module in modules}) == 6
+    assert len(modules) == 9
+    assert len({module.name for module in modules}) == 9
+    assert len({module.capability_id for module in modules}) == 9
     assert all(module.passive and not module.requires_api_key for module in modules)
     assert all(module.provider and module.reference_url for module in modules)
     assert all(module.module_family == "network_attribution" for module in modules)
@@ -163,6 +225,15 @@ def test_range_collectors_match_locally_without_transmitting_the_ip() -> None:
     github = GitHubRangeCollector(client).collect({"ip": "192.30.252.1"})[0]
     oracle = OracleCloudRangeCollector(client).collect({"ip": "40.233.0.1"})[0]
     atlassian = AtlassianRangeCollector(client).collect({"ip": "52.82.0.1"})[0]
+    google_services = GoogleServicesRangeCollector(client).collect(
+        {"ip": "8.8.4.1"}
+    )[0]
+    digitalocean = DigitalOceanRangeCollector(client).collect(
+        {"ip": "5.101.96.1"}
+    )[0]
+    microsoft = Microsoft365RangeCollector(client).collect(
+        {"ip": "13.107.0.1"}
+    )[0]
 
     assert cloudflare.raw_data["matched_prefix"] == "173.245.48.0/20"
     assert fastly.raw_data["matched_prefix"] == "23.235.32.0/20"
@@ -187,6 +258,21 @@ def test_range_collectors_match_locally_without_transmitting_the_ip() -> None:
         "perimeters": ["commercial"],
         "regions": ["global"],
     }
+    assert google_services.raw_data["matched_prefix"] == "8.8.4.0/24"
+    assert digitalocean.raw_data["matched_entry"] == {
+        "prefix": "5.101.96.0/24",
+        "country_code": "NL",
+        "region_code": "NL-NH",
+        "city": "Amsterdam",
+        "postal_code": "1098 XH",
+    }
+    assert microsoft.raw_data["matched_entry"] == {
+        "prefix": "13.107.0.0/24",
+        "service_areas": ["Exchange", "SharePoint"],
+        "service_names": ["Exchange Online", "SharePoint Online"],
+        "categories": ["Allow", "Optimize"],
+        "required": True,
+    }
     assert [call[1]["allowed_hosts"] for call in client.calls] == [
         {"www.cloudflare.com"},
         {"api.fastly.com"},
@@ -194,6 +280,9 @@ def test_range_collectors_match_locally_without_transmitting_the_ip() -> None:
         {"api.github.com"},
         {"docs.oracle.com"},
         {"ip-ranges.atlassian.com"},
+        {"www.gstatic.com"},
+        {"www.digitalocean.com"},
+        {"endpoints.office.com"},
     ]
     assert all(
         "173.245.48.1" not in url
@@ -202,6 +291,9 @@ def test_range_collectors_match_locally_without_transmitting_the_ip() -> None:
         and "192.30.252.1" not in url
         and "40.233.0.1" not in url
         and "52.82.0.1" not in url
+        and "8.8.4.1" not in url
+        and "5.101.96.1" not in url
+        and "13.107.0.1" not in url
         for url, _kwargs in client.calls
     )
     assert all("params" not in kwargs for _url, kwargs in client.calls)
@@ -265,7 +357,17 @@ def test_google_cloud_rejects_malformed_feed(mutation: str) -> None:
         )
 
 
-@pytest.mark.parametrize("provider", ["github", "oracle", "atlassian"])
+@pytest.mark.parametrize(
+    "provider",
+    [
+        "github",
+        "oracle",
+        "atlassian",
+        "google_services",
+        "digitalocean",
+        "microsoft_365",
+    ],
+)
 def test_additional_range_collectors_reject_malformed_feeds(provider: str) -> None:
     if provider == "github":
         payload = github_payload()
@@ -279,12 +381,33 @@ def test_additional_range_collectors_reject_malformed_feeds(provider: str) -> No
         collector = OracleCloudRangeCollector(StaticJsonClient(payload))
         ip = "40.233.0.1"
         error = "Oracle Cloud"
-    else:
+    elif provider == "atlassian":
         payload = atlassian_payload()
         payload["items"][0]["product"] = "email"
         collector = AtlassianRangeCollector(StaticJsonClient(payload))
         ip = "52.82.0.1"
         error = "Atlassian"
+    elif provider == "google_services":
+        payload = google_services_payload()
+        del payload["creationTime"]
+        collector = GoogleServicesRangeCollector(StaticJsonClient(payload))
+        ip = "8.8.4.1"
+        error = "Google services"
+    elif provider == "digitalocean":
+        payload = digitalocean_feed().replace(
+            "5.101.96.0/24",
+            "not-a-prefix",
+            1,
+        )
+        collector = DigitalOceanRangeCollector(StaticTextClient(payload))
+        ip = "5.101.96.1"
+        error = "network-range"
+    else:
+        payload = microsoft_365_payload()
+        payload[0]["required"] = "true"
+        collector = Microsoft365RangeCollector(StaticJsonClient(payload))
+        ip = "13.107.0.1"
+        error = "Microsoft 365"
 
     with pytest.raises(ValueError, match=error):
         collector.collect({"ip": ip})
@@ -311,9 +434,12 @@ def test_registry_exposes_network_range_pack() -> None:
     expected = {
         "ip_atlassian_ranges",
         "ip_cloudflare_ranges",
+        "ip_digitalocean_ranges",
         "ip_fastly_ranges",
         "ip_github_ranges",
         "ip_google_cloud_ranges",
+        "ip_google_services_ranges",
+        "ip_microsoft_365_ranges",
         "ip_oracle_cloud_ranges",
     }
 

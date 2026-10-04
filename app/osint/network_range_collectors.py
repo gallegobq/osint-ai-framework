@@ -1,3 +1,4 @@
+import csv
 import ipaddress
 
 from app.osint.contracts import CollectedItem, Collector
@@ -577,6 +578,274 @@ class AtlassianRangeCollector(PublicNetworkRangeCollector):
         ]
 
 
+class GoogleServicesRangeCollector(PublicNetworkRangeCollector):
+    name = "ip_google_services_ranges"
+    description = "Checks whether a public IP belongs to Google's published service ranges."
+    provider = "Google"
+    reference_url = "https://www.gstatic.com/ipranges/goog.json"
+    capability_id = "network_range:google-services"
+    endpoint = "https://www.gstatic.com/ipranges/goog.json"
+
+    def __init__(self, client: SafeHttpClient | None = None):
+        self.client = client or SafeHttpClient()
+
+    def collect(self, query: dict) -> list[CollectedItem]:
+        ip = self.validate_query(query)["ip"]
+        payload = self.client.get_json(
+            self.endpoint,
+            allowed_hosts={"www.gstatic.com"},
+        )
+        if not isinstance(payload, dict):
+            raise ValueError("Unexpected Google services network-range response.")
+        sync_token = payload.get("syncToken")
+        creation_time = payload.get("creationTime")
+        prefixes = payload.get("prefixes")
+        if (
+            not isinstance(sync_token, (str, int))
+            or isinstance(sync_token, bool)
+            or not str(sync_token)
+            or not isinstance(creation_time, str)
+            or not creation_time
+            or not isinstance(prefixes, list)
+            or not 10 <= len(prefixes) <= MAX_FEED_NETWORKS
+            or any(not isinstance(item, dict) for item in prefixes)
+        ):
+            raise ValueError("Unexpected Google services network-range response.")
+
+        parsed: list[IpNetwork] = []
+        seen: set[str] = set()
+        for item in prefixes:
+            available = [
+                key for key in ("ipv4Prefix", "ipv6Prefix") if key in item
+            ]
+            if len(available) != 1:
+                raise ValueError("Unexpected Google services network-range response.")
+            network = _parse_public_network(item[available[0]])
+            canonical = network.with_prefixlen
+            if canonical in seen:
+                raise ValueError("Unexpected Google services network-range response.")
+            seen.add(canonical)
+            parsed.append(network)
+
+        address = ipaddress.ip_address(ip)
+        matches = [
+            network
+            for network in parsed
+            if network.version == address.version and address in network
+        ]
+        matched = max(matches, key=lambda network: network.prefixlen, default=None)
+        return [
+            self._item(
+                ip=ip,
+                locator=self.endpoint,
+                data={
+                    "listed": matched is not None,
+                    "matched_prefix": matched.with_prefixlen if matched else None,
+                    "address_family": f"IPv{address.version}",
+                    "prefixes_checked": sum(
+                        network.version == address.version for network in parsed
+                    ),
+                    "feed_sync_token": str(sync_token),
+                    "feed_created_at": creation_time,
+                },
+            )
+        ]
+
+
+class DigitalOceanRangeCollector(PublicNetworkRangeCollector):
+    name = "ip_digitalocean_ranges"
+    description = "Checks whether a public IP belongs to DigitalOcean's geofeed ranges."
+    provider = "DigitalOcean"
+    reference_url = "https://www.digitalocean.com/geo/google.csv"
+    capability_id = "network_range:digitalocean"
+    endpoint = "https://www.digitalocean.com/geo/google.csv"
+
+    def __init__(self, client: SafeHttpClient | None = None):
+        self.client = client or SafeHttpClient()
+
+    def collect(self, query: dict) -> list[CollectedItem]:
+        ip = self.validate_query(query)["ip"]
+        body = self.client.get_text(
+            self.endpoint,
+            headers={"Accept": "text/csv"},
+            allowed_hosts={"www.digitalocean.com"},
+        )
+        if not isinstance(body, str):
+            raise ValueError("Unexpected DigitalOcean network-range response.")
+        rows = [
+            row
+            for row in csv.reader(body.splitlines())
+            if row and any(value.strip() for value in row)
+        ]
+        if not 10 <= len(rows) <= MAX_FEED_NETWORKS:
+            raise RuntimeError(
+                "DigitalOcean network-range feed did not contain enough entries."
+            )
+
+        parsed: list[tuple[IpNetwork, dict[str, str | None]]] = []
+        seen: set[str] = set()
+        for row in rows:
+            if len(row) != 5 or any(len(value) > 200 for value in row):
+                raise ValueError("Unexpected DigitalOcean network-range response.")
+            prefix, country, region, city, postal_code = (
+                value.strip() for value in row
+            )
+            if len(country) != 2 or not country.isalpha():
+                raise ValueError("Unexpected DigitalOcean network-range response.")
+            network = _parse_public_network(prefix)
+            canonical = network.with_prefixlen
+            if canonical in seen:
+                raise ValueError("Unexpected DigitalOcean network-range response.")
+            seen.add(canonical)
+            parsed.append(
+                (
+                    network,
+                    {
+                        "prefix": canonical,
+                        "country_code": country.upper(),
+                        "region_code": region or None,
+                        "city": city or None,
+                        "postal_code": postal_code or None,
+                    },
+                )
+            )
+
+        address = ipaddress.ip_address(ip)
+        matches = [
+            value
+            for value in parsed
+            if value[0].version == address.version and address in value[0]
+        ]
+        matched = max(matches, key=lambda value: value[0].prefixlen, default=None)
+        return [
+            self._item(
+                ip=ip,
+                locator=self.endpoint,
+                data={
+                    "listed": matched is not None,
+                    "matched_entry": matched[1] if matched else None,
+                    "address_family": f"IPv{address.version}",
+                    "prefixes_checked": sum(
+                        network.version == address.version
+                        for network, _metadata in parsed
+                    ),
+                },
+            )
+        ]
+
+
+class Microsoft365RangeCollector(PublicNetworkRangeCollector):
+    name = "ip_microsoft_365_ranges"
+    description = "Checks whether a public IP belongs to Microsoft 365's endpoints."
+    provider = "Microsoft 365"
+    reference_url = (
+        "https://learn.microsoft.com/en-us/microsoft-365/enterprise/"
+        "urls-and-ip-address-ranges"
+    )
+    capability_id = "network_range:microsoft-365"
+    client_request_id = "0f4e6d29-9c4b-4f81-b12e-cae1036ddc56"
+    endpoint = (
+        "https://endpoints.office.com/endpoints/worldwide"
+        f"?clientrequestid={client_request_id}"
+    )
+
+    def __init__(self, client: SafeHttpClient | None = None):
+        self.client = client or SafeHttpClient()
+
+    def collect(self, query: dict) -> list[CollectedItem]:
+        ip = self.validate_query(query)["ip"]
+        payload = self.client.get_json(
+            self.endpoint,
+            allowed_hosts={"endpoints.office.com"},
+        )
+        if (
+            not isinstance(payload, list)
+            or not 10 <= len(payload) <= 1_000
+            or any(not isinstance(item, dict) for item in payload)
+        ):
+            raise ValueError("Unexpected Microsoft 365 network-range response.")
+
+        entries: dict[
+            str,
+            tuple[IpNetwork, set[tuple[str, str, str, bool]]],
+        ] = {}
+        raw_count = 0
+        for item in payload:
+            record_id = item.get("id")
+            service_area = item.get("serviceArea")
+            display_name = item.get("serviceAreaDisplayName")
+            category = item.get("category")
+            required = item.get("required")
+            if (
+                not isinstance(record_id, int)
+                or isinstance(record_id, bool)
+                or not isinstance(service_area, str)
+                or not service_area
+                or not isinstance(display_name, str)
+                or not display_name
+                or not isinstance(category, str)
+                or not category
+                or not isinstance(required, bool)
+            ):
+                raise ValueError("Unexpected Microsoft 365 network-range response.")
+            values = item.get("ips")
+            if values is None:
+                continue
+            if not isinstance(values, list) or any(
+                not isinstance(value, str) for value in values
+            ):
+                raise ValueError("Unexpected Microsoft 365 network-range response.")
+            raw_count += len(values)
+            if raw_count > MAX_FEED_NETWORKS:
+                raise ValueError("Unexpected Microsoft 365 network-range response.")
+            for value in values:
+                network = _parse_public_network(value)
+                canonical = network.with_prefixlen
+                if canonical not in entries:
+                    entries[canonical] = (network, set())
+                entries[canonical][1].add(
+                    (service_area, display_name, category, required)
+                )
+        if raw_count < 10 or not entries:
+            raise RuntimeError(
+                "Microsoft 365 network-range feed did not contain enough entries."
+            )
+
+        address = ipaddress.ip_address(ip)
+        matches = [
+            value
+            for value in entries.values()
+            if value[0].version == address.version and address in value[0]
+        ]
+        matched = max(matches, key=lambda value: value[0].prefixlen, default=None)
+        matched_entry = None
+        if matched:
+            metadata = matched[1]
+            matched_entry = {
+                "prefix": matched[0].with_prefixlen,
+                "service_areas": sorted({value[0] for value in metadata}),
+                "service_names": sorted({value[1] for value in metadata}),
+                "categories": sorted({value[2] for value in metadata}),
+                "required": any(value[3] for value in metadata),
+            }
+        return [
+            self._item(
+                ip=ip,
+                locator=self.endpoint,
+                data={
+                    "listed": matched_entry is not None,
+                    "matched_entry": matched_entry,
+                    "address_family": f"IPv{address.version}",
+                    "prefixes_checked": sum(
+                        network.version == address.version
+                        for network, _metadata in entries.values()
+                    ),
+                    "records_checked": len(payload),
+                },
+            )
+        ]
+
+
 def public_network_range_collectors(
     client: SafeHttpClient | None = None,
 ) -> list[Collector]:
@@ -587,4 +856,7 @@ def public_network_range_collectors(
         GitHubRangeCollector(client),
         OracleCloudRangeCollector(client),
         AtlassianRangeCollector(client),
+        GoogleServicesRangeCollector(client),
+        DigitalOceanRangeCollector(client),
+        Microsoft365RangeCollector(client),
     ]

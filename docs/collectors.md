@@ -24,7 +24,7 @@ autorización.
 | Tipo | Sin clave | Con credencial opcional |
 |---|---|---|
 | Dominio | DNS A/AAAA, DNS completo por DoH, RDAP, crt.sh, Cert Spotter, Wayback, Common Crawl, urlscan.io | VirusTotal, SecurityTrails |
-| IP pública | RDAP, reverse DNS, RIPEstat, Shodan InternetDB y pertenencia a rangos de Cloudflare, Fastly, Google Cloud, GitHub, Oracle Cloud y Atlassian Cloud | Shodan, VirusTotal |
+| IP pública | RDAP, reverse DNS, RIPEstat, Shodan InternetDB y pertenencia a rangos de Cloudflare, Fastly, Google Cloud, servicios de Google, GitHub, Oracle Cloud, Atlassian Cloud, DigitalOcean y Microsoft 365 | Shodan, VirusTotal |
 | ASN | RDAP, RIPEstat, PeeringDB | — |
 | URL pública | Wayback, Common Crawl | — |
 | Hostname | DNS, CT, Wayback, Common Crawl, urlscan.io, Cert Spotter | VirusTotal |
@@ -37,7 +37,7 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 76 adaptadores: 70 públicos sin clave, 5 opcionales
+El catálogo actual suma 79 adaptadores: 73 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -65,8 +65,9 @@ excluye descripciones, CVSS, KEV, CPE y metadatos ya cubiertos por módulos
 dedicados.
 
 El cuarto paquete atribuye IP públicas por pertenencia exacta a los rangos
-oficiales de Cloudflare, Fastly, Google Cloud, GitHub, Oracle Cloud y Atlassian
-Cloud. La comprobación se realiza
+oficiales de Cloudflare, Fastly, Google Cloud, los servicios globales de Google,
+GitHub, Oracle Cloud, Atlassian Cloud, DigitalOcean y Microsoft 365. La
+comprobación se realiza
 localmente tras descargar el feed fijo: el IP investigado nunca se añade a la
 URL ni a parámetros enviados al proveedor, y sólo se conserva el prefijo
 coincidente y los metadatos mínimos de la fuente.
