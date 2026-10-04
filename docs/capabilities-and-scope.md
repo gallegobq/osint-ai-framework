@@ -18,7 +18,7 @@ Actualmente ofrece:
 
 - autenticación, sesiones, roles y membresías por proyecto;
 - proyectos e investigaciones separadas por modo operativo;
-- 81 módulos: 80 colectores pasivos —75 sin clave y 5 opcionales con
+- 82 módulos: 81 colectores pasivos —76 sin clave y 5 opcionales con
   credencial— y 1 validación TLS/HTTP activa aislada;
 - cinco perfiles de escaneo reproducibles equivalentes a los casos de uso de
   SpiderFoot: automático, pasivo, huella, investigación y completo;
@@ -94,7 +94,7 @@ El modo no convierte un objetivo ajeno en autorizado. Consulta
 | Hostname | DNS, certificados, Wayback, Common Crawl, urlscan.io, Cert Spotter | VirusTotal |
 | Email | MX/TXT del dominio; nunca transmite la parte local | — |
 | CVE | NIST NVD, CISA KEV, FIRST EPSS | — |
-| Hash MD5/SHA-1/SHA-256 | — | VirusTotal |
+| Hash MD5/SHA-1/SHA-256 | CIRCL hashlookup y certificados SHA-1 de SSLBL | VirusTotal |
 | Usuario | GitHub, repositorios GitHub, GitLab, Bluesky, Hacker News, paquetes npm | — |
 | Palabra clave | Wikidata, Wikipedia, OpenAlex, GDELT, Crossref, Open Library, Stack Overflow, Europe PMC, Google Books, Hacker News | — |
 

@@ -30,14 +30,14 @@ autorización.
 | Hostname | DNS, CT, Wayback, Common Crawl, urlscan.io, Cert Spotter | VirusTotal |
 | Email | MX/TXT del dominio; nunca transmite la parte local | — |
 | CVE | NIST NVD, CISA KEV y SSVC, FIRST EPSS, CVE Program/MITRE, Red Hat, SUSE CSAF VEX, GitHub Advisory, Ubuntu/Canonical, Debian y rangos Git de OSV | — |
-| Hash MD5/SHA-1/SHA-256 | — | VirusTotal |
+| Hash MD5/SHA-1/SHA-256 | CIRCL hashlookup y certificados SHA-1 de SSLBL | VirusTotal |
 | Usuario | GitHub, repositorios GitHub, GitLab, Bluesky, Hacker News, paquetes npm | — |
 | Palabra clave | Wikidata, Wikipedia, OpenAlex, GDELT, Crossref, Open Library, Stack Overflow, Europe PMC, Google Books, Hacker News | — |
 
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 81 adaptadores: 75 públicos sin clave, 5 opcionales
+El catálogo actual suma 82 adaptadores: 76 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -76,6 +76,11 @@ El quinto paquete contrasta URLs localmente con los feeds comunitarios de
 OpenPhish y URLhaus. La URL investigada nunca se transmite a esos proveedores:
 sólo se descargan sus listas públicas fijas y se conserva el resultado exacto
 normalizado, sin incorporar el contenido completo del feed a la evidencia.
+
+El sexto paquete contrasta localmente huellas SHA-1 de certificados TLS con la
+lista pública vigente de SSLBL. La huella investigada no se transmite al
+proveedor; se descarga el CSV fijo, se valida su tamaño y se conserva sólo la
+coincidencia, fecha y razón publicadas.
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante

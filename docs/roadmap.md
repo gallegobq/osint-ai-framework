@@ -26,8 +26,8 @@
 - Primer paquete de expansión con 19 módulos públicos no duplicados y benchmark
   automático, seguido por cinco módulos de estado CVE de proveedores y tres
   módulos de remediación/decisión/rangos Git, nueve atribuciones por rangos
-  oficiales y dos comprobaciones locales de reputación URL: 81 registrados
-  frente al objetivo verificable de 233.
+  oficiales, dos comprobaciones locales de reputación URL y una de certificados
+  SSLBL: 82 registrados frente al objetivo verificable de 233.
 
 ## Próximos incrementos recomendados
 

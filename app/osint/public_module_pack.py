@@ -464,6 +464,98 @@ class CirclHashlookupCollector(Collector):
         ]
 
 
+class SslblCertificateHashCollector(Collector):
+    name = "hash_sslbl_certificate"
+    description = (
+        "Checks a SHA-1 TLS certificate fingerprint against abuse.ch SSLBL."
+    )
+    target_types = frozenset({"hash"})
+    query_field = "hash"
+    profiles = frozenset({"investigate"})
+    provider = "abuse.ch SSLBL"
+    reference_url = "https://sslbl.abuse.ch/blacklist/"
+    module_family = "threat_feed"
+    capability_id = "hash_reputation:sslbl-certificate"
+    feed_url = "https://sslbl.abuse.ch/blacklist/sslblacklist.csv"
+    minimum_entries = 100
+    maximum_entries = 50_000
+
+    def __init__(self, client: SafeHttpClient | None = None):
+        self.client = client or SafeHttpClient()
+
+    def validate_query(self, query: dict) -> dict:
+        fingerprint = normalize_hash(query.get("hash"))
+        if len(fingerprint) != 40:
+            raise BadRequestException(
+                "SSLBL certificate fingerprints must use SHA-1."
+            )
+        return {"hash": fingerprint}
+
+    def collect(self, query: dict) -> list[CollectedItem]:
+        fingerprint = self.validate_query(query)["hash"]
+        body = self.client.get_text(
+            self.feed_url,
+            headers={"Accept": "text/csv"},
+            allowed_hosts={"sslbl.abuse.ch"},
+        )
+        if not isinstance(body, str):
+            raise ValueError("Unexpected SSLBL certificate-feed response.")
+
+        fingerprints: set[str] = set()
+        rejected_entries = 0
+        matched_entry = None
+        raw_entries = 0
+        for line in body.splitlines():
+            candidate = line.strip()
+            if not candidate or candidate.startswith("#"):
+                continue
+            raw_entries += 1
+            if raw_entries > self.maximum_entries:
+                raise RuntimeError(
+                    "SSLBL certificate feed exceeded the safe entry limit."
+                )
+            fields = candidate.split(",", 2)
+            if len(fields) != 3:
+                rejected_entries += 1
+                continue
+            try:
+                normalized = normalize_hash(fields[1])
+            except BadRequestException:
+                rejected_entries += 1
+                continue
+            if len(normalized) != 40:
+                rejected_entries += 1
+                continue
+            fingerprints.add(normalized)
+            if normalized == fingerprint:
+                matched_entry = {
+                    "listing_date": fields[0].strip()[:100],
+                    "reason": fields[2].strip()[:500],
+                }
+
+        if len(fingerprints) < self.minimum_entries:
+            raise RuntimeError(
+                "SSLBL certificate feed did not contain enough valid entries."
+            )
+        return [
+            _json_item(
+                source_type="threat_intelligence",
+                locator=self.feed_url,
+                kind=self.name,
+                title=f"SSLBL certificate status for {fingerprint}",
+                data={
+                    "hash": fingerprint,
+                    "algorithm": "sha1",
+                    "listed": matched_entry is not None,
+                    "listing": matched_entry,
+                    "entries_checked": len(fingerprints),
+                    "rejected_entries": rejected_entries,
+                },
+                provider=self.provider,
+            )
+        ]
+
+
 class KeybaseUserCollector(Collector):
     name = "username_keybase"
     description = "Retrieves a public Keybase identity profile by username."
@@ -640,6 +732,7 @@ def public_module_pack(client: SafeHttpClient | None = None) -> list[Collector]:
         *(IpFeedMembershipCollector(spec, client) for spec in IP_FEED_SPECS),
         IpApiGeoCollector(client),
         CirclHashlookupCollector(client),
+        SslblCertificateHashCollector(client),
         KeybaseUserCollector(client),
         GleifOrganizationCollector(client),
         HackerTargetDomainCollector(client),

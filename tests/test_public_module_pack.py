@@ -11,6 +11,7 @@ from app.osint.public_module_pack import (
     IpApiGeoCollector,
     IpFeedMembershipCollector,
     KeybaseUserCollector,
+    SslblCertificateHashCollector,
     DnsPolicyCollector,
     IP_FEED_SPECS,
     public_module_pack,
@@ -68,8 +69,8 @@ class StubClient:
 def test_public_module_pack_has_unique_executable_modules() -> None:
     modules = public_module_pack(StubClient())
 
-    assert len(modules) == 19
-    assert len({module.name for module in modules}) == 19
+    assert len(modules) == 20
+    assert len({module.name for module in modules}) == 20
     assert all(module.passive for module in modules)
     assert all(module.provider and module.reference_url for module in modules)
 
@@ -78,13 +79,13 @@ def test_registry_benchmark_tracks_spiderfoot_gap_without_inflating_availability
     collectors = default_collectors()
     benchmark = CollectorRegistry(collectors).benchmark()
 
-    assert len(collectors) == 81
-    assert benchmark["registered_modules"] == 81
-    assert benchmark["unique_capabilities"] == 81
+    assert len(collectors) == 82
+    assert benchmark["registered_modules"] == 82
+    assert benchmark["unique_capabilities"] == 82
     assert benchmark["capability_integrity_passed"] is True
     assert benchmark["spiderfoot_reference_modules"] == 232
     assert benchmark["parity_target"] == 233
-    assert benchmark["remaining_to_target"] == 152
+    assert benchmark["remaining_to_target"] == 151
     assert benchmark["parity_achieved"] is False
     assert benchmark["configured_modules"] < benchmark["registered_modules"]
     assert len(str(benchmark["reference_commit"])) == 40
@@ -121,6 +122,85 @@ def test_ip_feed_membership_is_exact_and_rejects_private_targets() -> None:
         pass
     else:
         raise AssertionError("Private IPs must be rejected.")
+
+
+def sslbl_certificate_feed(size: int, *, matched: bool = True) -> str:
+    rows = [
+        f"2026-10-04 00:00:{index % 60:02d},{index:040x},fixture reason"
+        for index in range(size)
+    ]
+    if matched:
+        rows[5] = f"2026-10-04 00:00:05,{'a' * 40},Test C&C"
+    return "# Listingdate,SHA1,Listingreason\n" + "\n".join(rows)
+
+
+class SslblCertificateClient:
+    def __init__(self, body: str) -> None:
+        self.body = body
+        self.calls: list[tuple[str, dict]] = []
+
+    def get_text(self, url: str, **kwargs) -> str:
+        self.calls.append((url, kwargs))
+        return self.body
+
+
+def test_sslbl_certificate_match_is_local_and_bounded() -> None:
+    client = SslblCertificateClient(sslbl_certificate_feed(100))
+
+    item = SslblCertificateHashCollector(client).collect({"hash": "A" * 40})[0]
+
+    assert item.raw_data == {
+        "hash": "a" * 40,
+        "algorithm": "sha1",
+        "listed": True,
+        "listing": {
+            "listing_date": "2026-10-04 00:00:05",
+            "reason": "Test C&C",
+        },
+        "entries_checked": 100,
+        "rejected_entries": 0,
+    }
+    assert client.calls == [
+        (
+            SslblCertificateHashCollector.feed_url,
+            {
+                "headers": {"Accept": "text/csv"},
+                "allowed_hosts": {"sslbl.abuse.ch"},
+            },
+        )
+    ]
+    assert "a" * 40 not in client.calls[0][0]
+
+
+@pytest.mark.parametrize("fingerprint", ["a" * 32, "a" * 64])
+def test_sslbl_certificate_rejects_non_sha1_before_fetching(fingerprint) -> None:
+    client = SslblCertificateClient(sslbl_certificate_feed(100))
+
+    with pytest.raises(BadRequestException, match="must use SHA-1"):
+        SslblCertificateHashCollector(client).collect({"hash": fingerprint})
+
+    assert client.calls == []
+
+
+def test_sslbl_certificate_rejects_truncated_feed() -> None:
+    client = SslblCertificateClient(sslbl_certificate_feed(99))
+
+    with pytest.raises(RuntimeError, match="enough valid entries"):
+        SslblCertificateHashCollector(client).collect({"hash": "a" * 40})
+
+
+def test_sslbl_certificate_rejects_oversized_feed() -> None:
+    collector = SslblCertificateHashCollector(
+        SslblCertificateClient(
+            sslbl_certificate_feed(
+                SslblCertificateHashCollector.maximum_entries + 1,
+                matched=False,
+            )
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="safe entry limit"):
+        collector.collect({"hash": "a" * 40})
 
 
 def test_public_enrichment_modules_return_bounded_normalized_evidence() -> None:

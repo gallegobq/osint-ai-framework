@@ -40,7 +40,7 @@ no presenta una aspiración como funcionalidad disponible.
 | Playbooks/pivots | IntelOwl | perfiles disponibles; falta DAG versionado y condiciones | Pendiente |
 | Marketplace aislado | Recon-ng | registro cerrado en código; falta SDK firmado y sandbox por módulo | Pendiente |
 | Conectores bidireccionales | OpenCTI / IntelOwl | exportación por archivo; falta entrega durable a MISP/OpenCTI/SIEM | Pendiente |
-| Amplitud de módulos | SpiderFoot | 81 módulos ejecutables únicos frente a 232; objetivo Linterna: 233 | Parcial |
+| Amplitud de módulos | SpiderFoot | 82 módulos ejecutables únicos frente a 232; objetivo Linterna: 233 | Parcial |
 
 ## Orden de implementación
 
