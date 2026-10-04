@@ -26,7 +26,7 @@ autorización.
 | Dominio | DNS A/AAAA, DNS completo por DoH, RDAP, crt.sh, Cert Spotter, Wayback, Common Crawl, urlscan.io | VirusTotal, SecurityTrails |
 | IP pública | RDAP, reverse DNS, RIPEstat, Shodan InternetDB y pertenencia a rangos de Cloudflare, Fastly, Google Cloud, servicios de Google, GitHub, Oracle Cloud, Atlassian Cloud, DigitalOcean y Microsoft 365 | Shodan, VirusTotal |
 | ASN | RDAP, RIPEstat, PeeringDB | — |
-| URL pública | Wayback, Common Crawl | — |
+| URL pública | Wayback, Common Crawl, OpenPhish, URLhaus | — |
 | Hostname | DNS, CT, Wayback, Common Crawl, urlscan.io, Cert Spotter | VirusTotal |
 | Email | MX/TXT del dominio; nunca transmite la parte local | — |
 | CVE | NIST NVD, CISA KEV y SSVC, FIRST EPSS, CVE Program/MITRE, Red Hat, SUSE CSAF VEX, GitHub Advisory, Ubuntu/Canonical, Debian y rangos Git de OSV | — |
@@ -37,7 +37,7 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 79 adaptadores: 73 públicos sin clave, 5 opcionales
+El catálogo actual suma 81 adaptadores: 75 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -71,6 +71,11 @@ comprobación se realiza
 localmente tras descargar el feed fijo: el IP investigado nunca se añade a la
 URL ni a parámetros enviados al proveedor, y sólo se conserva el prefijo
 coincidente y los metadatos mínimos de la fuente.
+
+El quinto paquete contrasta URLs localmente con los feeds comunitarios de
+OpenPhish y URLhaus. La URL investigada nunca se transmite a esos proveedores:
+sólo se descargan sus listas públicas fijas y se conserva el resultado exacto
+normalizado, sin incorporar el contenido completo del feed a la evidencia.
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante

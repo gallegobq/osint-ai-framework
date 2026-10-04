@@ -25,8 +25,9 @@
   deduplicación y encadenamiento exclusivamente pasivo y acotado.
 - Primer paquete de expansión con 19 módulos públicos no duplicados y benchmark
   automático, seguido por cinco módulos de estado CVE de proveedores y tres
-  módulos de remediación/decisión/rangos Git, más nueve atribuciones por rangos
-  oficiales: 79 registrados frente al objetivo verificable de 233.
+  módulos de remediación/decisión/rangos Git, nueve atribuciones por rangos
+  oficiales y dos comprobaciones locales de reputación URL: 81 registrados
+  frente al objetivo verificable de 233.
 
 ## Próximos incrementos recomendados
 

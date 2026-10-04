@@ -46,6 +46,7 @@ from app.osint.passive_collectors import (
     WikipediaSearchCollector,
 )
 from app.osint.public_module_pack import public_module_pack
+from app.osint.url_feed_collectors import public_url_feed_collectors
 from app.osint.soc_collectors import (
     CisaKevCollector,
     EmailDomainDnsCollector,
@@ -114,6 +115,7 @@ def default_collectors() -> list[Collector]:
         *public_module_pack(),
         *public_vulnerability_collectors(),
         *public_network_range_collectors(),
+        *public_url_feed_collectors(),
     ]
 
 
