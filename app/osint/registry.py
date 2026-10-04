@@ -26,6 +26,7 @@ from app.osint.keyed_collectors import (
     VirusTotalHashCollector,
     VirusTotalIpCollector,
 )
+from app.osint.network_range_collectors import public_network_range_collectors
 from app.osint.passive_collectors import (
     AsnPeeringDbCollector,
     AsnRdapCollector,
@@ -112,6 +113,7 @@ def default_collectors() -> list[Collector]:
         SecurityTrailsDomainCollector(),
         *public_module_pack(),
         *public_vulnerability_collectors(),
+        *public_network_range_collectors(),
     ]
 
 

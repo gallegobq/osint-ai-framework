@@ -14,8 +14,8 @@ intercambiables.
 - Evidencia con procedencia visible, SHA-256, firma HMAC, deduplicación y timestamps.
 - Entidades y relaciones citables a evidencia.
 - Recolección asíncrona mediante colectores desacoplados.
-- Catálogo de 70 módulos: 69 colectores pasivos para dominio, hostname, IP,
-  ASN, URL, email, hash, CVE, usuarios y palabras clave —64 sin claves y 5 con
+- Catálogo de 73 módulos: 72 colectores pasivos para dominio, hostname, IP,
+  ASN, URL, email, hash, CVE, usuarios y palabras clave —67 sin claves y 5 con
   credenciales— más una validación activa aislada.
 - Benchmark automático contra los 232 módulos cargables de SpiderFoot, con
   objetivo público de 233, referencia fijada a un commit y separación entre

@@ -19,7 +19,10 @@ $rootfsVolume = "osint-trivy-rootfs-$scanId"
 # upgrade layer; scanning that attestation together with the final filesystem
 # produces stale duplicate package findings. Trivy still inventories the final
 # image filesystem exported below.
-docker build --provenance=false --sbom=false --target runtime --tag $scanImage .
+# Pull the current base and rebuild the operating-system update layer. Reusing
+# yesterday's apt cache can report a fixable CVE even though the patched Debian
+# package is already available.
+docker build --pull --no-cache --provenance=false --sbom=false --target runtime --tag $scanImage .
 if ($LASTEXITCODE -ne 0) { throw "No se pudo construir la imagen." }
 
 try {
