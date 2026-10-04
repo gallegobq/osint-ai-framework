@@ -28,7 +28,7 @@ def main() -> int:
     token = tokens["access_token"]
     _, collectors = request("/api/v1/collectors", token=token)
     by_name = {item["name"]: item for item in collectors}
-    assert len(collectors) >= 73
+    assert len(collectors) >= 76
     assert {
         "cve_nvd",
         "cve_cisa_kev",
@@ -43,7 +43,10 @@ def main() -> int:
         "cve_osv_git_ranges",
         "ip_cloudflare_ranges",
         "ip_fastly_ranges",
+        "ip_github_ranges",
         "ip_google_cloud_ranges",
+        "ip_oracle_cloud_ranges",
+        "ip_atlassian_ranges",
         "email_domain_dns",
     } <= by_name.keys()
     assert "hash" in by_name["hash_virustotal"]["target_types"]
@@ -71,10 +74,10 @@ def main() -> int:
     }
     assert expected <= paths.keys()
     _, benchmark = request("/api/v1/collectors/benchmark", token=token)
-    assert benchmark["registered_modules"] >= 73
+    assert benchmark["registered_modules"] >= 76
     assert benchmark["unique_capabilities"] == benchmark["registered_modules"]
     assert benchmark["parity_target"] == 233
-    assert benchmark["remaining_to_target"] == 160
+    assert benchmark["remaining_to_target"] == 157
     assert benchmark["runtime_health"] == "not_measured_by_catalog_benchmark"
     print(
         f"SOC read-only smoke passed: collectors={len(collectors)} "

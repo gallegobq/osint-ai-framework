@@ -2,12 +2,71 @@ import pytest
 
 from app.core.exceptions import BadRequestException
 from app.osint.network_range_collectors import (
+    AtlassianRangeCollector,
     CloudflareRangeCollector,
     FastlyRangeCollector,
+    GitHubRangeCollector,
     GoogleCloudRangeCollector,
+    OracleCloudRangeCollector,
     public_network_range_collectors,
 )
 from app.osint.registry import CollectorRegistry
+
+
+def github_payload() -> dict[str, object]:
+    return {
+        "hooks": ["192.30.252.0/22"],
+        "web": ["192.30.252.0/22"],
+        "api": ["192.30.252.0/22"],
+        "git": ["192.30.252.0/22"],
+        "pages": ["185.199.108.0/22"],
+        "actions": [
+            "4.148.0.0/16",
+            "20.7.92.0/23",
+            "20.22.98.0/23",
+            "20.26.156.0/23",
+            "2a01:111:f403::/48",
+        ],
+    }
+
+
+def oracle_payload() -> dict[str, object]:
+    return {
+        "last_updated_timestamp": "2026-10-04T00:00:00.000000+00:00",
+        "regions": [
+            {
+                "region": "mx-monterrey-1",
+                "cidrs": [
+                    {"cidr": "40.233.0.0/19", "tags": ["OCI"]},
+                    {"cidr": "129.159.0.0/20", "tags": ["OCI"]},
+                    {"cidr": "130.35.0.0/16", "tags": ["OSN"]},
+                    {"cidr": "134.70.0.0/17", "tags": ["OCI"]},
+                    {"cidr": "138.1.0.0/16", "tags": ["OCI"]},
+                ],
+                "ipv6_cidrs": [
+                    {"cidr": f"2603:c02{octet:x}::/32", "tags": ["OCI"]}
+                    for octet in range(5)
+                ],
+            }
+        ],
+    }
+
+
+def atlassian_payload() -> dict[str, object]:
+    return {
+        "syncToken": 456,
+        "creationDate": "2026-10-04T00:00:00.000000",
+        "items": [
+            {
+                "cidr": f"52.82.{octet}.0/24",
+                "product": ["email"],
+                "direction": ["egress"],
+                "perimeter": "commercial",
+                "region": ["global"],
+            }
+            for octet in range(10)
+        ],
+    }
 
 
 class RangeClient:
@@ -40,6 +99,8 @@ class RangeClient:
 
     def get_json(self, url: str, **kwargs) -> object:
         self.calls.append((url, kwargs))
+        if "api.github.com" in url:
+            return github_payload()
         if "fastly.com" in url:
             return {
                 "addresses": ["23.235.32.0/20", "151.101.0.0/16"],
@@ -58,6 +119,10 @@ class RangeClient:
                     for octet in range(1, 11)
                 ],
             }
+        if "docs.oracle.com" in url:
+            return oracle_payload()
+        if "ip-ranges.atlassian.com" in url:
+            return atlassian_payload()
         raise AssertionError(f"Unexpected URL: {url}")
 
 
@@ -80,9 +145,9 @@ class StaticJsonClient:
 def test_public_network_range_pack_is_unique_passive_and_traceable() -> None:
     modules = public_network_range_collectors(RangeClient())
 
-    assert len(modules) == 3
-    assert len({module.name for module in modules}) == 3
-    assert len({module.capability_id for module in modules}) == 3
+    assert len(modules) == 6
+    assert len({module.name for module in modules}) == 6
+    assert len({module.capability_id for module in modules}) == 6
     assert all(module.passive and not module.requires_api_key for module in modules)
     assert all(module.provider and module.reference_url for module in modules)
     assert all(module.module_family == "network_attribution" for module in modules)
@@ -95,6 +160,9 @@ def test_range_collectors_match_locally_without_transmitting_the_ip() -> None:
     )[0]
     fastly = FastlyRangeCollector(client).collect({"ip": "23.235.32.1"})[0]
     google = GoogleCloudRangeCollector(client).collect({"ip": "34.1.2.3"})[0]
+    github = GitHubRangeCollector(client).collect({"ip": "192.30.252.1"})[0]
+    oracle = OracleCloudRangeCollector(client).collect({"ip": "40.233.0.1"})[0]
+    atlassian = AtlassianRangeCollector(client).collect({"ip": "52.82.0.1"})[0]
 
     assert cloudflare.raw_data["matched_prefix"] == "173.245.48.0/20"
     assert fastly.raw_data["matched_prefix"] == "23.235.32.0/20"
@@ -103,15 +171,37 @@ def test_range_collectors_match_locally_without_transmitting_the_ip() -> None:
         "service": "Google Cloud",
         "scope": "global",
     }
+    assert github.raw_data["matched_entry"] == {
+        "prefix": "192.30.252.0/22",
+        "services": ["api", "git", "hooks", "web"],
+    }
+    assert oracle.raw_data["matched_entry"] == {
+        "prefix": "40.233.0.0/19",
+        "region": "mx-monterrey-1",
+        "tags": ["OCI"],
+    }
+    assert atlassian.raw_data["matched_entry"] == {
+        "prefix": "52.82.0.0/24",
+        "products": ["email"],
+        "directions": ["egress"],
+        "perimeters": ["commercial"],
+        "regions": ["global"],
+    }
     assert [call[1]["allowed_hosts"] for call in client.calls] == [
         {"www.cloudflare.com"},
         {"api.fastly.com"},
         {"www.gstatic.com"},
+        {"api.github.com"},
+        {"docs.oracle.com"},
+        {"ip-ranges.atlassian.com"},
     ]
     assert all(
         "173.245.48.1" not in url
         and "23.235.32.1" not in url
         and "34.1.2.3" not in url
+        and "192.30.252.1" not in url
+        and "40.233.0.1" not in url
+        and "52.82.0.1" not in url
         for url, _kwargs in client.calls
     )
     assert all("params" not in kwargs for _url, kwargs in client.calls)
@@ -120,10 +210,14 @@ def test_range_collectors_match_locally_without_transmitting_the_ip() -> None:
 def test_cloudflare_ipv6_and_negative_membership() -> None:
     client = RangeClient()
     ipv6 = CloudflareRangeCollector(client).collect({"ip": "2606:4700::1"})[0]
+    oracle_ipv6 = OracleCloudRangeCollector(client).collect(
+        {"ip": "2603:c020::1"}
+    )[0]
     missing = FastlyRangeCollector(client).collect({"ip": "8.8.8.8"})[0]
 
     assert ipv6.raw_data["matched_prefix"] == "2606:4700::/32"
     assert ipv6.raw_data["address_family"] == "IPv6"
+    assert oracle_ipv6.raw_data["matched_entry"]["prefix"] == "2603:c020::/32"
     assert missing.raw_data["listed"] is False
     assert missing.raw_data["matched_prefix"] is None
 
@@ -171,6 +265,41 @@ def test_google_cloud_rejects_malformed_feed(mutation: str) -> None:
         )
 
 
+@pytest.mark.parametrize("provider", ["github", "oracle", "atlassian"])
+def test_additional_range_collectors_reject_malformed_feeds(provider: str) -> None:
+    if provider == "github":
+        payload = github_payload()
+        del payload["actions"]
+        collector = GitHubRangeCollector(StaticJsonClient(payload))
+        ip = "192.30.252.1"
+        error = "GitHub"
+    elif provider == "oracle":
+        payload = oracle_payload()
+        payload["regions"][0]["cidrs"][0]["tags"] = []
+        collector = OracleCloudRangeCollector(StaticJsonClient(payload))
+        ip = "40.233.0.1"
+        error = "Oracle Cloud"
+    else:
+        payload = atlassian_payload()
+        payload["items"][0]["product"] = "email"
+        collector = AtlassianRangeCollector(StaticJsonClient(payload))
+        ip = "52.82.0.1"
+        error = "Atlassian"
+
+    with pytest.raises(ValueError, match=error):
+        collector.collect({"ip": ip})
+
+
+def test_github_rejects_oversized_range_feed() -> None:
+    payload = github_payload()
+    payload["actions"] = ["4.148.0.0/16"] * 10_001
+
+    with pytest.raises(ValueError, match="GitHub"):
+        GitHubRangeCollector(StaticJsonClient(payload)).collect(
+            {"ip": "192.30.252.1"}
+        )
+
+
 def test_range_collectors_reject_private_targets() -> None:
     for collector in public_network_range_collectors(RangeClient()):
         with pytest.raises(BadRequestException):
@@ -180,9 +309,12 @@ def test_range_collectors_reject_private_targets() -> None:
 def test_registry_exposes_network_range_pack() -> None:
     descriptions = {item["name"]: item for item in CollectorRegistry().describe()}
     expected = {
+        "ip_atlassian_ranges",
         "ip_cloudflare_ranges",
         "ip_fastly_ranges",
+        "ip_github_ranges",
         "ip_google_cloud_ranges",
+        "ip_oracle_cloud_ranges",
     }
 
     assert expected <= descriptions.keys()
