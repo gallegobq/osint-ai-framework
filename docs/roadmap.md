@@ -27,7 +27,8 @@
   automático, seguido por cinco módulos de estado CVE de proveedores y tres
   módulos de remediación/decisión/rangos Git, nueve atribuciones por rangos
   oficiales, dos comprobaciones locales de reputación URL y una de certificados
-  SSLBL: 82 registrados frente al objetivo verificable de 233.
+  SSLBL, más reputación de subredes DShield: 83 registrados frente al objetivo
+  verificable de 233.
 
 ## Próximos incrementos recomendados
 

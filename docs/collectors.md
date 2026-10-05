@@ -37,7 +37,7 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 82 adaptadores: 76 públicos sin clave, 5 opcionales
+El catálogo actual suma 83 adaptadores: 77 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -81,6 +81,14 @@ El sexto paquete contrasta localmente huellas SHA-1 de certificados TLS con la
 lista pública vigente de SSLBL. La huella investigada no se transmite al
 proveedor; se descarga el CSV fijo, se valida su tamaño y se conserva sólo la
 coincidencia, fecha y razón publicadas.
+
+El séptimo paquete comprueba IP públicas contra las subredes /24 de mayor
+actividad atacante publicadas por SANS ISC / DShield. Descarga el feed fijo y
+compara localmente, valida los extremos y los recuentos de cada subred, conserva
+la fecha y atribución de la fuente, y omite los contactos. La pertenencia a una
+subred no atribuye ataques a la IP individual. Fuente y condiciones:
+[DShield](https://isc.sans.edu/feeds_doc.html),
+[CC BY-NC-SA 2.5](https://creativecommons.org/licenses/by-nc-sa/2.5/).
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante

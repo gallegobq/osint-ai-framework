@@ -2,6 +2,7 @@ from app.core.exceptions import BadRequestException, ServiceUnavailableException
 from app.osint.collectors import DomainDnsCollector, DomainRdapCollector
 from app.osint.active_collectors import SandboxTlsHttpBaselineCollector
 from app.osint.contracts import Collector
+from app.osint.dshield_collector import DshieldSubnetCollector
 from app.osint.extended_collectors import (
     BlueskyUserCollector,
     CrossrefSearchCollector,
@@ -116,6 +117,7 @@ def default_collectors() -> list[Collector]:
         *public_vulnerability_collectors(),
         *public_network_range_collectors(),
         *public_url_feed_collectors(),
+        DshieldSubnetCollector(),
     ]
 
 
