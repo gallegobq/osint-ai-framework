@@ -79,13 +79,13 @@ def test_registry_benchmark_tracks_spiderfoot_gap_without_inflating_availability
     collectors = default_collectors()
     benchmark = CollectorRegistry(collectors).benchmark()
 
-    assert len(collectors) == 83
-    assert benchmark["registered_modules"] == 83
-    assert benchmark["unique_capabilities"] == 83
+    assert len(collectors) == 84
+    assert benchmark["registered_modules"] == 84
+    assert benchmark["unique_capabilities"] == 84
     assert benchmark["capability_integrity_passed"] is True
     assert benchmark["spiderfoot_reference_modules"] == 232
     assert benchmark["parity_target"] == 233
-    assert benchmark["remaining_to_target"] == 150
+    assert benchmark["remaining_to_target"] == 149
     assert benchmark["parity_achieved"] is False
     assert benchmark["configured_modules"] < benchmark["registered_modules"]
     assert len(str(benchmark["reference_commit"])) == 40

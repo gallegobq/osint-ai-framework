@@ -24,7 +24,7 @@ autorización.
 | Tipo | Sin clave | Con credencial opcional |
 |---|---|---|
 | Dominio | DNS A/AAAA, DNS completo por DoH, RDAP, crt.sh, Cert Spotter, Wayback, Common Crawl, urlscan.io | VirusTotal, SecurityTrails |
-| IP pública | RDAP, reverse DNS, RIPEstat, Shodan InternetDB y pertenencia a rangos de Cloudflare, Fastly, Google Cloud, servicios de Google, GitHub, Oracle Cloud, Atlassian Cloud, DigitalOcean y Microsoft 365 | Shodan, VirusTotal |
+| IP pública | RDAP, reverse DNS, RIPEstat, Shodan InternetDB y pertenencia a rangos de Cloudflare, Fastly, Google Cloud, servicios de Google, GitHub, Oracle Cloud, Atlassian Cloud, DigitalOcean, Microsoft 365 y AWS | Shodan, VirusTotal |
 | ASN | RDAP, RIPEstat, PeeringDB | — |
 | URL pública | Wayback, Common Crawl, OpenPhish, URLhaus | — |
 | Hostname | DNS, CT, Wayback, Common Crawl, urlscan.io, Cert Spotter | VirusTotal |
@@ -37,7 +37,7 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 83 adaptadores: 77 públicos sin clave, 5 opcionales
+El catálogo actual suma 84 adaptadores: 78 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -66,7 +66,7 @@ dedicados.
 
 El cuarto paquete atribuye IP públicas por pertenencia exacta a los rangos
 oficiales de Cloudflare, Fastly, Google Cloud, los servicios globales de Google,
-GitHub, Oracle Cloud, Atlassian Cloud, DigitalOcean y Microsoft 365. La
+GitHub, Oracle Cloud, Atlassian Cloud, DigitalOcean, Microsoft 365 y AWS. La
 comprobación se realiza
 localmente tras descargar el feed fijo: el IP investigado nunca se añade a la
 URL ni a parámetros enviados al proveedor, y sólo se conserva el prefijo
@@ -89,6 +89,13 @@ la fecha y atribución de la fuente, y omite los contactos. La pertenencia a una
 subred no atribuye ataques a la IP individual. Fuente y condiciones:
 [DShield](https://isc.sans.edu/feeds_doc.html),
 [CC BY-NC-SA 2.5](https://creativecommons.org/licenses/by-nc-sa/2.5/).
+
+La ampliación AWS preserva todos los prefijos y etiquetas coincidentes de
+servicio, región y grupo fronterizo, sin inferir el servicio real de una carga
+de trabajo a partir de rangos solapados. Valida IPv4/IPv6, fecha de publicación,
+metadatos y límites de 30.000 registros, 128 coincidencias y 8 MB para este
+proveedor; no cambia los límites de otros clientes. El feed no incluye BYOIP
+ni todos los servicios. Fuente: [rangos oficiales AWS](https://docs.aws.amazon.com/vpc/latest/userguide/aws-ip-ranges.html).
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante
