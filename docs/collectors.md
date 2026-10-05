@@ -37,7 +37,7 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 84 adaptadores: 78 públicos sin clave, 5 opcionales
+El catálogo actual suma 85 adaptadores: 79 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -96,6 +96,15 @@ de trabajo a partir de rangos solapados. Valida IPv4/IPv6, fecha de publicación
 metadatos y límites de 30.000 registros, 128 coincidencias y 8 MB para este
 proveedor; no cambia los límites de otros clientes. El feed no incluye BYOIP
 ni todos los servicios. Fuente: [rangos oficiales AWS](https://docs.aws.amazon.com/vpc/latest/userguide/aws-ip-ranges.html).
+
+El historial BGP de IP consulta siete días de anuncios observados por RIS,
+con origen ASN, prefijos y períodos de visibilidad. Es una capacidad temporal
+distinta del contexto actual RIPEstat. Valida identidad, ventana UTC, pertenencia
+del prefijo y recuentos finitos; aplica límites duros de 100 rutas y 1.000 períodos
+aunque el proveedor use un límite blando. Transmite la IP pública a RIPE NCC,
+no contacta el objetivo. La cobertura excluye rutas de baja visibilidad y no
+demuestra propiedad, actividad maliciosa ni secuestro BGP. Fuente:
+[RIPEstat Routing History](https://data.stat.ripe.net/docs/data-api/api-endpoints/routing-history).
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante
