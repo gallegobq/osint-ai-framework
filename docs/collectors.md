@@ -25,7 +25,7 @@ autorización.
 |---|---|---|
 | Dominio | DNS A/AAAA, DNS completo por DoH, RDAP, crt.sh, Cert Spotter, Wayback, Common Crawl, urlscan.io | VirusTotal, SecurityTrails |
 | IP pública | RDAP, reverse DNS, RIPEstat, Shodan InternetDB y pertenencia a rangos de Cloudflare, Fastly, Google Cloud, servicios de Google, GitHub, Oracle Cloud, Atlassian Cloud, DigitalOcean, Microsoft 365 y AWS | Shodan, VirusTotal |
-| ASN | RDAP, RIPEstat, PeeringDB y vecinos BGP observados por RIS | — |
+| ASN | RDAP, RIPEstat, PeeringDB, vecinos BGP y métricas de longitud AS-path RIS | — |
 | URL pública | Wayback, Common Crawl, OpenPhish, URLhaus | — |
 | Hostname | DNS, CT, Wayback, Common Crawl, urlscan.io, Cert Spotter | VirusTotal |
 | Email | MX/TXT del dominio; nunca transmite la parte local | — |
@@ -37,7 +37,7 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 86 adaptadores: 80 públicos sin clave, 5 opcionales
+El catálogo actual suma 87 adaptadores: 81 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -116,6 +116,14 @@ registros completos antes de seleccionar 200 resultados, señalando cualquier
 truncamiento; emite como máximo 25 ASN distintos no inciertos. No interpreta
 izquierda/derecha como contratos comerciales ni garantiza topología completa.
 Fuente: [RIPEstat ASN Neighbours](https://data.stat.ripe.net/docs/data-api/api-endpoints/asn-neighbours).
+
+Las longitudes AS-path de RIS forman una sola capacidad, con dos proyecciones:
+incluyendo y excluyendo AS prepending. Preserva mínimo, máximo, suma, media y
+número de rutas por colector; valida números finitos, consistencia aritmética,
+identidad y fecha, con un máximo de 128 colectores. No replica vecinos ni
+historial, y no confunde longitud de AS path con saltos físicos, latencia o
+actividad maliciosa. Las ubicaciones son las de los colectores, no del ASN
+investigado. Fuente: [RIPEstat AS Path Length](https://data.stat.ripe.net/docs/data-api/api-endpoints/as-path-length).
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante
