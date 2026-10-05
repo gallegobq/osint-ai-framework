@@ -25,7 +25,7 @@ autorización.
 |---|---|---|
 | Dominio | DNS A/AAAA, DNS completo por DoH, RDAP, crt.sh, Cert Spotter, Wayback, Common Crawl, urlscan.io | VirusTotal, SecurityTrails |
 | IP pública | RDAP, reverse DNS, RIPEstat, Shodan InternetDB y pertenencia a rangos de Cloudflare, Fastly, Google Cloud, servicios de Google, GitHub, Oracle Cloud, Atlassian Cloud, DigitalOcean, Microsoft 365 y AWS | Shodan, VirusTotal |
-| ASN | RDAP, RIPEstat, PeeringDB | — |
+| ASN | RDAP, RIPEstat, PeeringDB y vecinos BGP observados por RIS | — |
 | URL pública | Wayback, Common Crawl, OpenPhish, URLhaus | — |
 | Hostname | DNS, CT, Wayback, Common Crawl, urlscan.io, Cert Spotter | VirusTotal |
 | Email | MX/TXT del dominio; nunca transmite la parte local | — |
@@ -37,7 +37,7 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 85 adaptadores: 79 públicos sin clave, 5 opcionales
+El catálogo actual suma 86 adaptadores: 80 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -105,6 +105,17 @@ aunque el proveedor use un límite blando. Transmite la IP pública a RIPE NCC,
 no contacta el objetivo. La cobertura excluye rutas de baja visibilidad y no
 demuestra propiedad, actividad maliciosa ni secuestro BGP. Fuente:
 [RIPEstat Routing History](https://data.stat.ripe.net/docs/data-api/api-endpoints/routing-history).
+
+Los vecinos ASN observados por RIS constituyen una capacidad de topología
+distinta del resumen de enrutamiento existente. Preserva las posiciones en el
+AS path, métricas de rutas/peers y la marca `uncertain`; ésta nunca se convierte
+en un descubrimiento para seguir. Preserva observaciones ASN/posición repetidas
+sin sumar sus recuentos ni confundirlas con aristas únicas. Valida identidad,
+tiempo y hasta 10.000
+registros completos antes de seleccionar 200 resultados, señalando cualquier
+truncamiento; emite como máximo 25 ASN distintos no inciertos. No interpreta
+izquierda/derecha como contratos comerciales ni garantiza topología completa.
+Fuente: [RIPEstat ASN Neighbours](https://data.stat.ripe.net/docs/data-api/api-endpoints/asn-neighbours).
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante

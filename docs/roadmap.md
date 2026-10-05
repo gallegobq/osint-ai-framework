@@ -28,7 +28,7 @@
   módulos de remediación/decisión/rangos Git, nueve atribuciones por rangos
   oficiales, dos comprobaciones locales de reputación URL y una de certificados
   SSLBL, más reputación de subredes DShield, atribución de rangos AWS e
-  historial BGP temporal RIS: 85 registrados frente al objetivo verificable de 233.
+  historial BGP temporal y vecinos ASN RIS: 86 registrados frente al objetivo de 233.
 
 ## Próximos incrementos recomendados
 

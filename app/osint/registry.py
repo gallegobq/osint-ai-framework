@@ -2,6 +2,7 @@ from app.core.exceptions import BadRequestException, ServiceUnavailableException
 from app.osint.collectors import DomainDnsCollector, DomainRdapCollector
 from app.osint.active_collectors import SandboxTlsHttpBaselineCollector
 from app.osint.aws_ranges_collector import AwsRangeCollector
+from app.osint.asn_neighbours_collector import AsnNeighboursCollector
 from app.osint.contracts import Collector
 from app.osint.dshield_collector import DshieldSubnetCollector
 from app.osint.extended_collectors import (
@@ -122,6 +123,7 @@ def default_collectors() -> list[Collector]:
         DshieldSubnetCollector(),
         AwsRangeCollector(),
         IpRoutingHistoryCollector(),
+        AsnNeighboursCollector(),
     ]
 
 
