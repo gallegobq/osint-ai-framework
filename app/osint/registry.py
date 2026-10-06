@@ -4,6 +4,7 @@ from app.osint.active_collectors import SandboxTlsHttpBaselineCollector
 from app.osint.aws_ranges_collector import AwsRangeCollector
 from app.osint.asn_neighbours_collector import AsnNeighboursCollector
 from app.osint.as_path_length_collector import AsPathLengthCollector
+from app.osint.bgp_activity_collector import AsnBgpActivityCollector
 from app.osint.contracts import Collector
 from app.osint.dshield_collector import DshieldSubnetCollector
 from app.osint.dockerhub_collector import DockerHubRepositoriesCollector
@@ -132,6 +133,7 @@ def default_collectors() -> list[Collector]:
         IpRpkiCollector(),
         DockerHubRepositoriesCollector(),
         HuggingFaceModelsCollector(),
+        AsnBgpActivityCollector(),
     ]
 
 

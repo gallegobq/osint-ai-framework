@@ -25,7 +25,7 @@ autorización.
 |---|---|---|
 | Dominio | DNS A/AAAA, DNS completo por DoH, RDAP, crt.sh, Cert Spotter, Wayback, Common Crawl, urlscan.io | VirusTotal, SecurityTrails |
 | IP pública | RDAP, reverse DNS, RIPEstat, Shodan InternetDB y pertenencia a rangos de Cloudflare, Fastly, Google Cloud, servicios de Google, GitHub, Oracle Cloud, Atlassian Cloud, DigitalOcean, Microsoft 365 y AWS | Shodan, VirusTotal |
-| ASN | RDAP, RIPEstat, PeeringDB, vecinos BGP y métricas de longitud AS-path RIS | — |
+| ASN | RDAP, RIPEstat, PeeringDB, vecinos BGP, métricas de longitud AS-path y actividad agregada de anuncios RIS | — |
 | URL pública | Wayback, Common Crawl, OpenPhish, URLhaus | — |
 | Hostname | DNS, CT, Wayback, Common Crawl, urlscan.io, Cert Spotter | VirusTotal |
 | Email | MX/TXT del dominio; nunca transmite la parte local | — |
@@ -37,7 +37,7 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 90 adaptadores: 84 públicos sin clave, 5 opcionales
+El catálogo actual suma 91 adaptadores: 85 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -224,6 +224,20 @@ la superficie SSRF.
 Los demás adaptadores siguen el mismo contrato y están descritos por el
 catálogo de API. Consulta [orchestration.md](orchestration.md) para selección,
 límites y ejecución agrupada.
+
+## Actividad temporal BGP por ASN
+
+`asn_ripestat_bgp_activity` consulta una sola respuesta anónima RIPEstat 1.5
+con 24 horas y hasta 24 intervalos de al menos una hora. Verifica ASN, versión,
+ventana, orden, alineación, solapamiento y conteos antes de guardar una
+proyección. Conserva la ventana efectiva del proveedor, que puede estar
+retrasada, y señala cobertura incompleta sin rellenar muestras ausentes.
+Las retiradas para ASN no están disponibles: se conservan como `null`, nunca
+como cero. El volumen de anuncios no mide rutas únicas ni demuestra incidentes.
+No descarga eventos individuales, contacta al blanco ni emite descubrimientos.
+Es una capacidad temporal distinta del catálogo de prefijos y del historial
+de orígenes IP. Fuente:
+[RIPEstat BGP Update Activity](https://data.stat.ripe.net/docs/data-api/api-endpoints/bgp-update-activity).
 
 ## Añadir un colector
 

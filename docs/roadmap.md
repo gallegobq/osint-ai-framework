@@ -30,7 +30,8 @@
   SSLBL, más reputación de subredes DShield, atribución de rangos AWS e
   historial BGP temporal, vecinos ASN, longitudes AS-path RIS y validez RPKI
   de orígenes de prefijos IP, repositorios públicos Docker Hub y metadatos de
-  modelos Hugging Face: 90 registrados frente al objetivo de 233.
+  modelos Hugging Face y actividad agregada de anuncios BGP por ASN:
+  91 registrados frente al objetivo de 233.
 
 ## Próximos incrementos recomendados
 
