@@ -105,7 +105,7 @@ jurisdicciones aplicables.
 
 ## Evidencia local más reciente
 
-El 2026-10-05 aprobaron 367 pruebas y Ruff. El benchmark de liveness más
+El 2026-10-05 aprobaron 397 pruebas y Ruff. El benchmark de liveness más
 reciente ejecutó 1.500 solicitudes sin errores, con p95 mediano de 321,59 ms
 frente al umbral local de 1000 ms. La medición anterior de 2286 ms incluía el
 fallback IPv6 de `localhost` a la publicación IPv4 de Docker y no representaba

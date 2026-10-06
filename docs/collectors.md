@@ -31,13 +31,13 @@ autorización.
 | Email | MX/TXT del dominio; nunca transmite la parte local | — |
 | CVE | NIST NVD, CISA KEV y SSVC, FIRST EPSS, CVE Program/MITRE, Red Hat, SUSE CSAF VEX, GitHub Advisory, Ubuntu/Canonical, Debian y rangos Git de OSV | — |
 | Hash MD5/SHA-1/SHA-256 | CIRCL hashlookup y certificados SHA-1 de SSLBL | VirusTotal |
-| Usuario | GitHub, repositorios GitHub, GitLab, Bluesky, Hacker News, paquetes npm y repositorios públicos Docker Hub | — |
+| Usuario | GitHub, repositorios GitHub, GitLab, Bluesky, Hacker News, paquetes npm, repositorios públicos Docker Hub y metadatos de modelos Hugging Face | — |
 | Palabra clave | Wikidata, Wikipedia, OpenAlex, GDELT, Crossref, Open Library, Stack Overflow, Europe PMC, Google Books, Hacker News | — |
 
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 89 adaptadores: 83 públicos sin clave, 5 opcionales
+El catálogo actual suma 90 adaptadores: 84 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -148,6 +148,17 @@ El namespace puede corresponder a una organización o usuario: una coincidencia
 no identifica a una persona ni certifica seguridad o despliegue; un resultado
 vacío tampoco prueba ausencia de cuenta. Fuente:
 [Docker Hub: List repositories](https://docs.docker.com/reference/api/hub/latest/operations/listNamespaceRepositories/).
+
+`username_huggingface_models` obtiene metadatos públicos de modelos del
+publicador indicado mediante una consulta anónima y campos explícitos. Comprueba
+la pertenencia exacta del ID y autor, visibilidad pública, unicidad, recuentos,
+fecha y estado `gated`; solicita hasta 26 registros y emite 25, validando también
+el registro extra antes de señalar truncamiento. Preserva métricas ausentes
+como `null`, no como cero. No descarga pesos, código, configuración o model cards,
+ni ejecuta inferencia, autenticación o paginación. Los metadatos públicos de un
+modelo gated no conceden acceso a sus archivos. No certifica identidad personal,
+seguridad, despliegue ni catálogo exhaustivo. Fuente:
+[Hugging Face: list_models](https://huggingface.co/docs/huggingface_hub/package_reference/hf_api#huggingface_hub.HfApi.list_models).
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante

@@ -29,8 +29,8 @@
   oficiales, dos comprobaciones locales de reputación URL y una de certificados
   SSLBL, más reputación de subredes DShield, atribución de rangos AWS e
   historial BGP temporal, vecinos ASN, longitudes AS-path RIS y validez RPKI
-  de orígenes de prefijos IP y repositorios públicos Docker Hub:
-  89 registrados frente al objetivo de 233.
+  de orígenes de prefijos IP, repositorios públicos Docker Hub y metadatos de
+  modelos Hugging Face: 90 registrados frente al objetivo de 233.
 
 ## Próximos incrementos recomendados
 
