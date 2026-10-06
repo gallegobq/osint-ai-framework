@@ -51,6 +51,7 @@ from app.osint.passive_collectors import (
 )
 from app.osint.public_module_pack import public_module_pack
 from app.osint.routing_history_collector import IpRoutingHistoryCollector
+from app.osint.rpki_collector import IpRpkiCollector
 from app.osint.url_feed_collectors import public_url_feed_collectors
 from app.osint.soc_collectors import (
     CisaKevCollector,
@@ -126,6 +127,7 @@ def default_collectors() -> list[Collector]:
         IpRoutingHistoryCollector(),
         AsnNeighboursCollector(),
         AsPathLengthCollector(),
+        IpRpkiCollector(),
     ]
 
 

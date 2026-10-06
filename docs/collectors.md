@@ -37,7 +37,7 @@ autorización.
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 87 adaptadores: 81 públicos sin clave, 5 opcionales
+El catálogo actual suma 88 adaptadores: 82 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -124,6 +124,18 @@ identidad y fecha, con un máximo de 128 colectores. No replica vecinos ni
 historial, y no confunde longitud de AS path con saltos físicos, latencia o
 actividad maliciosa. Las ubicaciones son las de los colectores, no del ASN
 investigado. Fuente: [RIPEstat AS Path Length](https://data.stat.ripe.net/docs/data-api/api-endpoints/as-path-length).
+
+`ip_ripestat_rpki` añade una sola capacidad de seguridad de enrutamiento:
+obtiene el prefijo que contiene la IP y consulta su validez RPKI para cada
+origen observado. Conserva `valid`, `invalid_asn`, `invalid_length` y `unknown`
+sin inferir actividad maliciosa; ausencia de anuncio no equivale a `unknown`.
+Valida identidad de prefijo/ASN, versiones y tipos antes de emitir evidencia;
+rechaza más de cinco orígenes y no devuelve resultados parciales tras un fallo.
+La observación RIS exige diez peers y excluye prefijos relacionados. Sus fechas
+separan la observación de rutas de la consulta actual al validador; no es una
+instantánea atómica, verificación criptográfica local ni prueba de propiedad
+o secuestro BGP. Fuentes: [Prefix Overview](https://data.stat.ripe.net/docs/data-api/api-endpoints/prefix-overview)
+y [RPKI Validation](https://data.stat.ripe.net/docs/data-api/api-endpoints/rpki-validation).
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante
