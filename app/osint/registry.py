@@ -6,6 +6,7 @@ from app.osint.asn_neighbours_collector import AsnNeighboursCollector
 from app.osint.as_path_length_collector import AsPathLengthCollector
 from app.osint.contracts import Collector
 from app.osint.dshield_collector import DshieldSubnetCollector
+from app.osint.dockerhub_collector import DockerHubRepositoriesCollector
 from app.osint.extended_collectors import (
     BlueskyUserCollector,
     CrossrefSearchCollector,
@@ -128,6 +129,7 @@ def default_collectors() -> list[Collector]:
         AsnNeighboursCollector(),
         AsPathLengthCollector(),
         IpRpkiCollector(),
+        DockerHubRepositoriesCollector(),
     ]
 
 

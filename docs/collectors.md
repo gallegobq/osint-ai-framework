@@ -31,13 +31,13 @@ autorización.
 | Email | MX/TXT del dominio; nunca transmite la parte local | — |
 | CVE | NIST NVD, CISA KEV y SSVC, FIRST EPSS, CVE Program/MITRE, Red Hat, SUSE CSAF VEX, GitHub Advisory, Ubuntu/Canonical, Debian y rangos Git de OSV | — |
 | Hash MD5/SHA-1/SHA-256 | CIRCL hashlookup y certificados SHA-1 de SSLBL | VirusTotal |
-| Usuario | GitHub, repositorios GitHub, GitLab, Bluesky, Hacker News, paquetes npm | — |
+| Usuario | GitHub, repositorios GitHub, GitLab, Bluesky, Hacker News, paquetes npm y repositorios públicos Docker Hub | — |
 | Palabra clave | Wikidata, Wikipedia, OpenAlex, GDELT, Crossref, Open Library, Stack Overflow, Europe PMC, Google Books, Hacker News | — |
 
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 88 adaptadores: 82 públicos sin clave, 5 opcionales
+El catálogo actual suma 89 adaptadores: 83 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 
@@ -136,6 +136,18 @@ separan la observación de rutas de la consulta actual al validador; no es una
 instantánea atómica, verificación criptográfica local ni prueba de propiedad
 o secuestro BGP. Fuentes: [Prefix Overview](https://data.stat.ripe.net/docs/data-api/api-endpoints/prefix-overview)
 y [RPKI Validation](https://data.stat.ripe.net/docs/data-api/api-endpoints/rpki-validation).
+
+`username_dockerhub_repositories` consulta de forma anónima una sola página
+de hasta 25 repositorios públicos del namespace indicado, mediante la API
+vigente `/v2/namespaces/{namespace}/repositories`. Conserva nombre, descripción
+breve, estrellas, pulls y última actualización, validando pertenencia exacta,
+visibilidad pública, recuentos, fecha y unicidad. Indica truncamiento y nunca
+sigue enlaces de paginación ni descarga imágenes, manifests o repositorios.
+No transmite credenciales ni conserva permisos, contactos o descripción completa.
+El namespace puede corresponder a una organización o usuario: una coincidencia
+no identifica a una persona ni certifica seguridad o despliegue; un resultado
+vacío tampoco prueba ausencia de cuenta. Fuente:
+[Docker Hub: List repositories](https://docs.docker.com/reference/api/hub/latest/operations/listNamespaceRepositories/).
 
 `GET /api/v1/collectors/benchmark` devuelve capacidades únicas registradas,
 módulos configurados, familias, referencia SpiderFoot inmutable, brecha restante
