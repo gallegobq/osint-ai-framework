@@ -9,6 +9,7 @@ from app.osint.contracts import Collector
 from app.osint.dshield_collector import DshieldSubnetCollector
 from app.osint.dockerhub_collector import DockerHubRepositoriesCollector
 from app.osint.huggingface_collector import HuggingFaceModelsCollector
+from app.osint.huggingface_datasets_collector import HuggingFaceDatasetsCollector
 from app.osint.extended_collectors import (
     BlueskyUserCollector,
     CrossrefSearchCollector,
@@ -133,6 +134,7 @@ def default_collectors() -> list[Collector]:
         IpRpkiCollector(),
         DockerHubRepositoriesCollector(),
         HuggingFaceModelsCollector(),
+        HuggingFaceDatasetsCollector(),
         AsnBgpActivityCollector(),
     ]
 

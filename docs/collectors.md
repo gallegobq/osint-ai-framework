@@ -1,5 +1,18 @@
 # Colectores OSINT
 
+## Conjuntos de datos públicos Hugging Face
+
+`username_huggingface_datasets` consulta una página anónima del catálogo del
+publicador, distinta del catálogo de modelos. Proyecta como máximo 25 conjuntos
+de datos, comprobando también un registro extra para indicar truncamiento.
+Valida namespace, identidad, privacidad explícita, duplicados, métricas y fechas.
+Conserva los estados gated/disabled como metadatos sin intentar acceder a archivos.
+No descarga filas, scripts, tarjetas ni archivos, no recorre páginas y no emite
+nuevos blancos. Las coincidencias no demuestran identidad personal, licencia,
+consentimiento, propiedad de los datos ni seguridad; una lista vacía no prueba
+que el publicador no exista. El chat puede elegir este módulo para usuarios.
+Referencia: [Hugging Face: list_datasets](https://huggingface.co/docs/huggingface_hub/package_reference/hf_api#huggingface_hub.HfApi.list_datasets).
+
 ## Contrato
 
 Cada colector implementa:
@@ -31,13 +44,13 @@ autorización.
 | Email | MX/TXT del dominio; nunca transmite la parte local | — |
 | CVE | NIST NVD, CISA KEV y SSVC, FIRST EPSS, CVE Program/MITRE, Red Hat, SUSE CSAF VEX, GitHub Advisory, Ubuntu/Canonical, Debian y rangos Git de OSV | — |
 | Hash MD5/SHA-1/SHA-256 | CIRCL hashlookup y certificados SHA-1 de SSLBL | VirusTotal |
-| Usuario | GitHub, repositorios GitHub, GitLab, Bluesky, Hacker News, paquetes npm, repositorios públicos Docker Hub y metadatos de modelos Hugging Face | — |
+| Usuario | GitHub, repositorios GitHub, GitLab, Bluesky, Hacker News, paquetes npm, repositorios públicos Docker Hub y metadatos de modelos y conjuntos de datos Hugging Face | — |
 | Palabra clave | Wikidata, Wikipedia, OpenAlex, GDELT, Crossref, Open Library, Stack Overflow, Europe PMC, Google Books, Hacker News | — |
 
 El endpoint `GET /api/v1/collectors` informa compatibilidad, perfiles, tipos
 emitidos, disponibilidad y la variable necesaria sin revelar su valor. urlscan.io permite una cuota
 anónima pequeña; `URLSCAN_API_KEY` amplía la capacidad de acuerdo con el plan.
-El catálogo actual suma 91 adaptadores: 85 públicos sin clave, 5 opcionales
+El catálogo actual suma 92 adaptadores: 86 públicos sin clave, 5 opcionales
 con credencial y 1 validación activa de bajo impacto ejecutada en el sandbox.
 Los tres adaptadores VirusTotal comparten una sola clave.
 

@@ -28,7 +28,7 @@ def main() -> int:
     token = tokens["access_token"]
     _, collectors = request("/api/v1/collectors", token=token)
     by_name = {item["name"]: item for item in collectors}
-    assert len(collectors) >= 91
+    assert len(collectors) >= 92
     assert {
         "cve_nvd",
         "cve_cisa_kev",
@@ -61,6 +61,7 @@ def main() -> int:
         "ip_ripestat_rpki",
         "username_dockerhub_repositories",
         "username_huggingface_models",
+        "username_huggingface_datasets",
         "asn_ripestat_bgp_activity",
         "email_domain_dns",
     } <= by_name.keys()
@@ -89,10 +90,10 @@ def main() -> int:
     }
     assert expected <= paths.keys()
     _, benchmark = request("/api/v1/collectors/benchmark", token=token)
-    assert benchmark["registered_modules"] >= 91
+    assert benchmark["registered_modules"] >= 92
     assert benchmark["unique_capabilities"] == benchmark["registered_modules"]
     assert benchmark["parity_target"] == 233
-    assert benchmark["remaining_to_target"] == 142
+    assert benchmark["remaining_to_target"] == 141
     assert benchmark["runtime_health"] == "not_measured_by_catalog_benchmark"
     print(
         f"SOC read-only smoke passed: collectors={len(collectors)} "

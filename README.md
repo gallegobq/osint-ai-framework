@@ -16,8 +16,8 @@ intercambiables.
 - Recolección asíncrona mediante colectores desacoplados.
 - Chat por investigación: basta un pedido, con tipo de análisis, fuentes y
   decisiones explicadas, contexto de seguimiento y estados reales actualizados.
-- Catálogo de 91 módulos: 90 colectores pasivos para dominio, hostname, IP,
-  ASN, URL, email, hash, CVE, usuarios y palabras clave —85 sin claves y 5 con
+- Catálogo de 92 módulos: 91 colectores pasivos para dominio, hostname, IP,
+  ASN, URL, email, hash, CVE, usuarios y palabras clave —86 sin claves y 5 con
   credenciales— más una validación activa aislada.
 - Benchmark automático contra los 232 módulos cargables de SpiderFoot, con
   objetivo público de 233, referencia fijada a un commit y separación entre
