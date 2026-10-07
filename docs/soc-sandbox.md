@@ -50,9 +50,15 @@ Una ejecución activa requiere acumulativamente:
 6. `allow_active=true` en la ejecución;
 7. confirmación de autorización;
 8. nota específica de ejecución;
-9. aparición textual del dominio en el alcance del engagement y en la nota de
+9. aparición del hostname exacto (no un substring de otro host) en el alcance del engagement y en la nota de
    ejecución;
-10. nueva validación en el worker inmediatamente antes de construir el plan.
+10. nueva validación en el worker antes de construir el plan y antes de cada acción:
+    permisos actuales, acceso de editor, alcance y ventana. Revocar cualquiera
+    impide el siguiente contacto activo.
+
+También se puede pedir desde el chat («Verifica TLS de mi-dominio.com»). La
+interfaz presenta el impacto y los hosts y exige una confirmación por ejecución;
+no reutiliza la autorización pasiva ni el consentimiento de un mensaje anterior.
 
 Las búsquedas programadas siguen siendo exclusivamente pasivas.
 

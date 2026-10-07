@@ -99,6 +99,17 @@ def test_markdown_report_explains_public_exposure_in_plain_language() -> None:
     assert "used no LLM tokens" in markdown
 
 
+def test_report_keeps_complete_critical_evidence_without_severity_suppression():
+    item = _evidence(11, 101, "tls_http_baseline", "Critical synthetic security observation")
+    item.content = '{"severity":"critical","details":"Complete synthetic finding","verified":true}'
+    item.raw_data = {"severity": "critical", "details": "Complete synthetic finding", "verified": True}
+    report = _report([item])
+    markdown = ReportService.render_markdown(ReportService.__new__(ReportService), report)
+    assert item.content in markdown
+    assert "Critical synthetic security observation [E11]" in markdown
+    assert report.model_dump()["evidence"][0]["raw_data"] == item.raw_data
+
+
 def test_markdown_report_does_not_overstate_an_empty_search() -> None:
     markdown = ReportService.render_markdown(
         ReportService.__new__(ReportService),

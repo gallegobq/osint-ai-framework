@@ -44,8 +44,15 @@ y decisiones en la política auditable del caso, sin una nueva base de datos.
 
 `POST /api/v1/investigations/{id}/chat` acepta `prompt`,
 `authorization_confirmed` y, para continuar, `parent_run_id`. No acepta perfiles,
-módulos, límites ni permisos activos. Sólo crea consultas pasivas, hasta 12
-fuentes o el tope del operador si es menor, sin ampliar objetivos descubiertos.
+módulos ni límites. Crea hasta 12 fuentes o el tope del operador si es menor,
+sin ampliar objetivos descubiertos. Para un pedido explícito de verificación
+activa TLS/HTTP devuelve `requires_active_authorization` y `active_targets`, sin
+encolar. Sólo al recibir `active_authorization_confirmed=true` y una
+`active_scope_note` específica puede crear una ejecución `footprint` activa.
+Exige ambos permisos de colección, acceso de editor, caso pentest, hosts exactos
+y ventana vigente. La política audita el consentimiento; el worker revalida
+permisos, membresía, alcance y vigencia antes de cada contacto activo. Un permiso
+previo no se hereda en otro mensaje. El modelo no puede autorizar herramientas.
 Si falta un objetivo o consentimiento para consultar fuentes externas, responde
 una pregunta y no encola nada. El contexto sólo se lee después de comprobar
 acceso de editor al caso y nunca se permite usar una búsqueda de otro caso.
@@ -53,7 +60,7 @@ Un mensaje como «ahora revisa su reputación» conserva los blancos anteriores;
 un dominio explícito nuevo los sustituye. Las conclusiones aún requieren
 revisión humana y la evidencia se consulta en el mismo caso.
 
-La única confirmación del flujo básico es la autorización para consultar
+La confirmación del flujo pasivo básico es la autorización para consultar
 fuentes externas. Se recuerda en memoria durante la sesión de ese caso, no
 como permiso global permanente. La búsqueda tradicional permanece disponible
 en **Opciones avanzadas**. El chat requiere que exista un proyecto y un caso;

@@ -30,6 +30,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
         const request = route.request().postDataJSON();
         messages.push(request);
         if (request.prompt === "hola") body = { message: "¿Qué objetivo quieres investigar?", needs_clarification: true };
+        else if (request.prompt.startsWith("Verifica TLS") && !request.active_authorization_confirmed) {
+          body = { message: "Autoriza una negociación TLS y HTTP HEAD TCP/443, sin cambios.",
+            needs_clarification: true, requires_active_authorization: true, active_targets: ["example.com"] };
+        }
         else {
           run = { id: messages.length + 5, objective: request.prompt, status: "queued", created_at: date,
             policy: { chat: { analysis_type: "Infraestructura y exposición", message: "Voy a elegir fuentes pasivas.", decisions: ["Sólo consultas pasivas."] } },
@@ -62,12 +66,29 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "playwright");
     await page.waitForFunction(() => document.querySelectorAll(".chat-user")[0]?.textContent.includes("Ahora revisa"));
     assert.equal(messages[2].parent_run_id, 7);
     assert.equal(messages[2].authorization_confirmed, true);
+    await page.getByText("La consulta fue parcial:", { exact: false }).waitFor();
+    page.once("dialog", (dialog) => dialog.dismiss());
+    await page.locator("#chat-prompt").fill("Verifica TLS example.com");
+    await page.locator('#chat-form button[type="submit"]').click();
+    await page.locator("#chat-notes").filter({ hasText: "Autoriza una negociación" }).waitFor();
+    assert.equal(messages.length, 4);
+    assert.equal(messages[3].active_authorization_confirmed, undefined);
+    page.once("dialog", async (dialog) => {
+      assert.ok(dialog.message().includes("example.com") && dialog.message().includes("TCP/443"));
+      await dialog.accept();
+    });
+    await page.locator('#chat-form button[type="submit"]').click();
+    await page.waitForFunction(() => document.querySelector(".chat-user")?.textContent.includes("Verifica TLS"));
+    assert.equal(messages.length, 6);
+    assert.equal(messages[5].active_authorization_confirmed, true);
+    assert.ok(messages[5].active_scope_note.includes("example.com"));
+    assert.equal(messages[5].parent_run_id, messages[4].parent_run_id);
     await page.locator("#chat-title").scrollIntoViewIfNeeded();
     await page.screenshot({ path: "data/chat-smoke-desktop.png" });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: "data/chat-smoke-mobile.png" });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.deepEqual(errors, []);
-    console.log("Chat UI smoke passed: prompt-only form, clarification, polling, partial results, safe escaping, follow-up context, desktop/mobile.");
+    console.log("Chat UI smoke passed: prompt-only form, passive follow-up, active confirmation/cancellation, exact scope, safe escaping, desktop/mobile.");
   } finally { await browser.close(); }
 })().catch((error) => { console.error(error); process.exitCode = 1; });

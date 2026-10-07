@@ -54,9 +54,17 @@ datos. La política de la instancia puede hacer obligatorios los dos primeros.
 Una investigación puede definir una fecha de retención y `legal_hold` mediante
 la API de gobierno.
 
-El chat siempre ejecuta consultas pasivas. La línea base activa TLS/HTTP sólo
-está disponible mediante opciones avanzadas en un pentest autorizado, con
-alcance y ventana vigentes; nunca se activa por una instrucción del chat.
+El chat puede proponer verificación activa: escribe «Verifica TLS de mi-dominio.com»
+en un caso pentest autorizado, con alcance y ventana vigentes. Te mostrará los
+hosts y pedirá confirmación específica para una negociación TLS y una petición
+HTTP HEAD por host en TCP/443. Requiere permiso `collection:execute_active`,
+permiso de colección y acceso de editor al caso. Esa confirmación no se recuerda
+para otras acciones. Las consultas normales siguen sin contacto activo.
+La comprobación de roles, alcance y vigencia se repite antes de cada acción.
+No hay shell, explotación ni modificaciones remotas; cada acción adicional
+debe incorporarse con su propio perfil de permisos, impacto y autorización.
+Los hallazgos críticos no deben omitirse por su gravedad: se muestran a usuarios
+autorizados con evidencia y límites, sin presentar hipótesis como hechos.
 
 ## 4. Lanzar una búsqueda
 

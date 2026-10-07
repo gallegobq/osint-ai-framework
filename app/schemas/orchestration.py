@@ -99,6 +99,8 @@ class ChatSearchCreate(BaseModel):
     prompt: str = Field(min_length=1, max_length=2000)
     parent_run_id: int | None = Field(default=None, ge=1)
     authorization_confirmed: bool = False
+    active_authorization_confirmed: bool = False
+    active_scope_note: str | None = Field(default=None, max_length=1000)
 
 
 class ChatSearchRead(BaseModel):
@@ -107,6 +109,8 @@ class ChatSearchRead(BaseModel):
     decisions: list[str]
     needs_clarification: bool
     run: SearchRunRead | None = None
+    requires_active_authorization: bool = False
+    active_targets: list[str] = Field(default_factory=list)
 
 
 class ScanProfileRead(BaseModel):

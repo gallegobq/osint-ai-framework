@@ -4,6 +4,19 @@ import unicodedata
 from app.osint.targets import infer_targets
 
 
+def requests_active_verification(prompt: str) -> bool:
+    text = "".join(c for c in unicodedata.normalize("NFKD", prompt.casefold())
+                   if not unicodedata.combining(c))
+    # Explicit requests only; a question about TLS is not consent to contact a host.
+    if re.search(r"\b(?:sin|no|not|without)\b", text):
+        return False
+    return bool(re.search(
+        r"\b(?:verifica(?:r)?|comprueba|comprobar|valida(?:r)?|check|verify)\b.*"
+        r"\b(?:activamente|activa|activo|tls|https|http)\b|"
+        r"\b(?:pruebas? activas?|verificacion activa|active verification)\b", text,
+    ))
+
+
 def interpret_chat(prompt: str, previous_targets: list[dict] | None = None) -> dict:
     """Explain bounded routing decisions, never infer authorization or new identities."""
     prompt = " ".join(prompt.split())
@@ -52,7 +65,13 @@ def interpret_chat(prompt: str, previous_targets: list[dict] | None = None) -> d
     if inherited:
         decisions.append("Conservo los objetivos del mensaje anterior; no invento otros.")
     decisions.append("Sólo consultas pasivas, sin pruebas activas ni seguimiento automático de nuevos objetivos.")
+    active = requests_active_verification(prompt)
+    if active:
+        analysis = "Verificación activa TLS/HTTP"
+        decisions[-1] = ("Propongo una negociación TLS y una petición HTTP HEAD por host en TCP/443, "
+                         "dentro del sandbox; sin modificar sistemas ni ampliar objetivos.")
     return {"targets": targets, "analysis_type": analysis, "decisions": decisions,
+            "active_requested": active,
             "needs_clarification": False,
             "message": f"Voy a realizar un análisis de {analysis.lower()}. "
             "Te mostraré las fuentes elegidas, su motivo y los resultados verificables."}

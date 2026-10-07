@@ -14,7 +14,7 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.job import JobStatus
 from app.schemas.orchestration import SearchRunStatus
 from app.services.collection_executor import CollectionExecutor
-from app.services.engagement_policy import active_target_scope_status
+from app.services.engagement_policy import active_target_scope_status, require_active_actor
 
 
 class OrchestrationExecutor:
@@ -56,6 +56,7 @@ class OrchestrationExecutor:
 
             effective_allow_active = False
             if run.allow_active:
+                require_active_actor(actor, self.users)
                 effective_allow_active, reason = active_target_scope_status(
                     run.investigation,
                     run.targets,

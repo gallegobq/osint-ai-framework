@@ -1,7 +1,21 @@
 from datetime import datetime, timezone
+import re
 
+from app.core.exceptions import ForbiddenException
+from app.core.permissions import Permissions
 from app.models.investigation import Investigation
 from app.schemas.investigation import InvestigationMode
+
+
+def require_active_actor(actor, users) -> None:
+    """Resolve current effective permissions, not a queued permission snapshot."""
+    if not actor.is_active:
+        raise ForbiddenException()
+    if not actor.is_superuser and not all(
+        users.has_permission(actor.id, permission)
+        for permission in (Permissions.Collection.EXECUTE, Permissions.Collection.EXECUTE_ACTIVE)
+    ):
+        raise ForbiddenException()
 
 
 def active_testing_status(
@@ -13,6 +27,8 @@ def active_testing_status(
 
     if investigation.operation_mode != InvestigationMode.PENTEST.value:
         return False, "Active tools are only available in pentest mode."
+    if getattr(investigation, "status", "active") in {"paused", "completed", "archived"}:
+        return False, "Active actions require an open, unpaused investigation."
     if not investigation.active_testing_authorized:
         return False, "Active testing is not authorized for this engagement."
     if not (investigation.authorization_scope or "").strip():
@@ -51,7 +67,8 @@ def active_target_scope_status(
     engagement_scope = (investigation.authorization_scope or "").lower()
     execution_scope = (scope_note or "").lower()
     for target in active_targets:
-        if target not in engagement_scope or target not in execution_scope:
+        pattern = rf"(?<![a-z0-9._-]){re.escape(target)}(?=$|[^a-z0-9._-]|\.(?:\s|$))"
+        if not re.search(pattern, engagement_scope) or not re.search(pattern, execution_scope):
             return (
                 False,
                 "Every active target must appear explicitly in both the engagement "

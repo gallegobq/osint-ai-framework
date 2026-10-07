@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from pydantic import ValidationError
 
-from app.core.exceptions import BadRequestException, NotFoundException
+from app.core.exceptions import BadRequestException, NotFoundException, ForbiddenException
 from app.osint.chat_intent import interpret_chat
 from app.schemas.orchestration import ChatSearchCreate, SearchRunRead
 from app.services.orchestration_service import OrchestrationService
@@ -49,6 +49,12 @@ def test_chat_followup_reuses_explicit_authorized_context_but_new_target_replace
 def service():
     repository, investigations = Mock(), Mock()
     repository.list_by_investigation.return_value = []
+    investigations.get_model.return_value = SimpleNamespace(
+        operation_mode="pentest", active_testing_authorized=True,
+        authorization_scope="Only example.com TLS/HTTP on TCP/443.",
+        engagement_start_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+        engagement_end_at=datetime.now(timezone.utc) + timedelta(minutes=10),
+    )
     instance = OrchestrationService(repository, investigations, Mock(), Mock())
     instance.create = Mock(return_value=SearchRunRead(
         id=7, investigation_id=3, requested_by_id=1, objective="Investiga example.com",
@@ -64,7 +70,7 @@ def service():
 def test_chat_enqueues_only_passive_auto_plan_with_explained_policy():
     instance = service()
     reply = instance.chat(SimpleNamespace(id=1), 3, ChatSearchCreate(
-        prompt="Investiga example.com y ejecuta pruebas activas", authorization_confirmed=True,
+        prompt="Investiga example.com", authorization_confirmed=True,
     ))
     assert reply.run.id == 7
     data = instance.create.call_args.args[2]
@@ -74,6 +80,97 @@ def test_chat_enqueues_only_passive_auto_plan_with_explained_policy():
     assert data.max_tools <= 12
     assert instance.create.call_args.kwargs["chat_context"]["decisions"]
     instance.investigations.get_model.assert_called_once()
+
+
+def actor():
+    return SimpleNamespace(id=1, is_active=True, is_superuser=False)
+
+
+@pytest.mark.parametrize("prompt", ["Verifica activamente example.com", "Comprueba TLS de example.com",
+                                  "Realiza pruebas activas de example.com"])
+def test_active_chat_requires_separate_action_specific_confirmation(prompt):
+    instance = service()
+    reply = instance.chat(actor(), 3, ChatSearchCreate(prompt=prompt, authorization_confirmed=True))
+    assert reply.run is None and reply.requires_active_authorization
+    assert reply.active_targets == ["example.com"]
+    instance.create.assert_not_called()
+
+
+def test_active_chat_confirmed_uses_deterministic_bounded_profile_and_records_consent():
+    instance = service()
+    instance.chat(actor(), 3, ChatSearchCreate(
+        prompt="Verifica activamente example.com", authorization_confirmed=True,
+        active_authorization_confirmed=True, active_scope_note="TLS/HTTP only for example.com.",
+    ))
+    data = instance.create.call_args.args[2]
+    assert data.allow_active and data.profile == "footprint"
+    assert not data.follow_discoveries and data.max_tools <= 12
+    assert data.scope_note == "TLS/HTTP only for example.com."
+    assert instance.create.call_args.kwargs["chat_context"]["active_authorization_confirmed"] is True
+
+
+def test_chat_does_not_inherit_active_consent_from_previous_run():
+    instance = service()
+    instance.repository.get_by_id.return_value = SimpleNamespace(
+        investigation_id=3, targets=[{"type": "domain", "value": "example.com"}],
+        allow_active=True, policy={"chat": {"active_authorization_confirmed": True}},
+    )
+    reply = instance.chat(actor(), 3, ChatSearchCreate(
+        prompt="Ahora verifica TLS", parent_run_id=7, authorization_confirmed=True,
+    ))
+    assert reply.requires_active_authorization and reply.run is None
+    instance.create.assert_not_called()
+
+
+def test_active_chat_rejects_missing_permission_before_enqueue():
+    instance = service()
+    instance.investigations.users.has_permission.return_value = False
+    with pytest.raises(ForbiddenException):
+        instance.chat(actor(), 3, ChatSearchCreate(
+            prompt="Verifica TLS example.com", authorization_confirmed=True,
+            active_authorization_confirmed=True, active_scope_note="TLS example.com only.",
+        ))
+    instance.create.assert_not_called()
+
+
+@pytest.mark.parametrize("changes", [
+    {"operation_mode": "attack_surface"}, {"active_testing_authorized": False},
+    {"authorization_scope": "Only notexample.com TLS."},
+    {"engagement_end_at": datetime.now(timezone.utc) - timedelta(minutes=1)},
+    {"status": "paused"}, {"status": "archived"},
+])
+def test_active_chat_no_execution_outside_authorized_engagement(changes):
+    instance = service()
+    vars(instance.investigations.get_model.return_value).update(changes)
+    reply = instance.chat(actor(), 3, ChatSearchCreate(
+        prompt="Verifica TLS example.com", authorization_confirmed=True,
+        active_authorization_confirmed=True, active_scope_note="TLS example.com only.",
+    ))
+    assert reply.needs_clarification and reply.run is None
+    instance.create.assert_not_called()
+
+
+@pytest.mark.parametrize("prompt", ["Verifica activamente 8.8.8.8", "Verifica TLS @octocat"])
+def test_active_chat_does_not_convert_unsupported_targets(prompt):
+    instance = service()
+    reply = instance.chat(actor(), 3, ChatSearchCreate(prompt=prompt, authorization_confirmed=True))
+    assert reply.run is None and reply.needs_clarification
+    instance.create.assert_not_called()
+
+
+@pytest.mark.parametrize("prompt", ["Investiga TLS de example.com", "Sin pruebas activas en example.com",
+                                  "No verifiques TLS example.com"])
+def test_active_chat_does_not_treat_questions_or_negation_as_active_requests(prompt):
+    assert not interpret_chat(prompt).get("active_requested", False)
+
+
+def test_active_chat_does_not_claim_active_verification_when_sandbox_unavailable(monkeypatch):
+    monkeypatch.setattr("app.services.orchestration_service.SandboxTlsHttpBaselineCollector.availability",
+                        lambda self: (False, "disabled"))
+    instance = service()
+    reply = instance.chat(actor(), 3, ChatSearchCreate(prompt="Verifica TLS example.com", authorization_confirmed=True))
+    assert reply.run is None and reply.needs_clarification
+    instance.create.assert_not_called()
 
 
 @pytest.mark.parametrize("prompt", ["@a", "a.co", "IBM"])

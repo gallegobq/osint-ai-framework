@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from app.core.container import build_audit_service, build_evidence_service
+from app.core.container import build_audit_service, build_evidence_service, build_investigation_service
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.core.settings import settings
 from app.osint.registry import CollectorRegistry
@@ -9,7 +9,8 @@ from app.repositories.job_repository import CollectionJobRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.evidence import EvidenceCreate
 from app.schemas.job import JobStatus
-from app.services.engagement_policy import active_testing_status
+from app.services.engagement_policy import active_target_scope_status, require_active_actor
+from app.schemas.project import ProjectMemberRole
 
 
 class CollectionExecutor:
@@ -37,14 +38,23 @@ class CollectionExecutor:
             raise NotFoundException("Collection job")
 
         try:
+            # Refresh identity and engagement state for each action, including after a long queue wait.
+            self.repository.db.expire_all()
             actor = self.users.get_by_id(job.requested_by_id)
             if actor is None or not actor.is_active:
                 raise RuntimeError("Requesting user is no longer active.")
 
             collector = self.registry.get(job.collector)
             if not collector.passive:
-                active_allowed, reason = active_testing_status(job.investigation)
+                require_active_actor(actor, self.users)
+                investigation = build_investigation_service(self.repository.db).get_model(
+                    actor, job.investigation_id, minimum_role=ProjectMemberRole.EDITOR,
+                )
                 search_policy = job.search_run.policy if job.search_run else {}
+                active_allowed, reason = active_target_scope_status(
+                    investigation, job.search_run.targets if job.search_run else [],
+                    search_policy.get("scope_note"),
+                )
                 if (
                     not active_allowed
                     or not job.search_run

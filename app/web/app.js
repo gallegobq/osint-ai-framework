@@ -329,7 +329,7 @@ function chatTranscript(runs) {
 
 function chatPanel(investigationId, runs) {
   const authorized = state.chatConsent.has(investigationId);
-  return `<section class="surface chat-surface" aria-labelledby="chat-title"><div class="surface-head"><div><h3 id="chat-title">Chat con Linterna</h3><p>Describe tu objetivo. Sin elegir módulos, blancos ni perfiles.</p></div><button class="back-button" data-action="new-search" data-id="${investigationId}" type="button">Opciones avanzadas</button></div><div class="surface-body"><div id="chat-transcript" class="chat-transcript" role="log" aria-live="polite">${chatTranscript(runs)}</div><div id="chat-notes" role="status">${escapeHtml(state.chatNotes.get(investigationId) || "")}</div><form id="chat-form" data-investigation-id="${investigationId}"><label for="chat-prompt">¿Qué quieres investigar?</label><textarea id="chat-prompt" rows="3" minlength="1" maxlength="2000" required placeholder="Escribe tu pedido; después puedes decir «ahora revisa su reputación»"></textarea><label class="check-label" ${authorized ? "hidden" : ""}><input id="chat-authorization" type="checkbox" ${authorized ? "checked" : ""} required /><span>Confirmo que puedo investigar los objetivos que indique en este chat y consultar fuentes externas. Sólo análisis pasivo.</span></label><p id="chat-error" class="form-error" role="alert" hidden></p><button class="button button-primary" type="submit">Enviar a Linterna →</button></form></div></section>`;
+  return `<section class="surface chat-surface" aria-labelledby="chat-title"><div class="surface-head"><div><h3 id="chat-title">Chat con Linterna</h3><p>Describe tu objetivo. Sin elegir módulos, blancos ni perfiles. La verificación activa exige confirmación específica.</p></div><button class="back-button" data-action="new-search" data-id="${investigationId}" type="button">Opciones avanzadas</button></div><div class="surface-body"><div id="chat-transcript" class="chat-transcript" role="log" aria-live="polite">${chatTranscript(runs)}</div><div id="chat-notes" role="status">${escapeHtml(state.chatNotes.get(investigationId) || "")}</div><form id="chat-form" data-investigation-id="${investigationId}"><label for="chat-prompt">¿Qué quieres investigar?</label><textarea id="chat-prompt" rows="3" minlength="1" maxlength="2000" required placeholder="Escribe tu pedido; después puedes decir «ahora revisa su reputación»"></textarea><label class="check-label" ${authorized ? "hidden" : ""}><input id="chat-authorization" type="checkbox" ${authorized ? "checked" : ""} required /><span>Confirmo que puedo investigar los objetivos que indique en este chat y consultar fuentes externas. Esto no autoriza acciones activas.</span></label><p id="chat-error" class="form-error" role="alert" hidden></p><button class="button button-primary" type="submit">Enviar a Linterna →</button></form></div></section>`;
 }
 
 async function pollChat(investigationId, runs) {
@@ -577,7 +577,15 @@ content.addEventListener("submit", async (event) => {
   $("#chat-error").hidden = true;
   try {
     const confirmed = $("#chat-authorization").checked;
-    const reply = await api(`/investigations/${investigationId}/chat`, { method: "POST", body: JSON.stringify({ prompt, parent_run_id: Number(form.dataset.parentRunId) || null, authorization_confirmed: confirmed }) });
+    const payload = { prompt, parent_run_id: Number(form.dataset.parentRunId) || null, authorization_confirmed: confirmed };
+    let reply = await api(`/investigations/${investigationId}/chat`, { method: "POST", body: JSON.stringify(payload) });
+    if (!$("#chat-form") || Number($("#chat-form").dataset.investigationId) !== investigationId) return;
+    if (reply.requires_active_authorization && window.confirm(`${reply.message}\n\nHosts: ${(reply.active_targets || []).join(", ")}\n\n¿Autorizas esta ejecución específica?`)) {
+      reply = await api(`/investigations/${investigationId}/chat`, { method: "POST", body: JSON.stringify({ ...payload,
+        active_authorization_confirmed: true,
+        active_scope_note: `Autorizo únicamente verificación TLS/HTTP HEAD TCP/443 para: ${(reply.active_targets || []).join(", ")}`,
+      }) });
+    }
     if (confirmed) state.chatConsent.add(investigationId);
     if (!$("#chat-form") || Number($("#chat-form").dataset.investigationId) !== investigationId) return;
     if (!reply.run) {

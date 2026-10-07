@@ -7,6 +7,7 @@ from app.models.job import SearchRun
 from app.models.user import User
 from app.osint.targets import infer_targets, normalize_target
 from app.osint.chat_intent import interpret_chat
+from app.osint.active_collectors import SandboxTlsHttpBaselineCollector
 from app.repositories.job_repository import (
     SearchDiscoveryRepository,
     SearchRunRepository,
@@ -23,7 +24,7 @@ from app.schemas.orchestration import (
 )
 from app.schemas.project import ProjectMemberRole
 from app.services.audit_service import AuditService
-from app.services.engagement_policy import active_target_scope_status
+from app.services.engagement_policy import active_target_scope_status, require_active_actor
 from app.services.investigation_service import InvestigationService
 from app.workers.dispatcher import JobDispatcher
 
@@ -79,6 +80,7 @@ class OrchestrationService:
             else infer_targets(data.objective)
         )
         if data.allow_active:
+            require_active_actor(actor, self.investigations.users)
             if len((data.scope_note or "").strip()) < 10:
                 raise BadRequestException(
                     "Active pentest runs require a target-specific scope note."
@@ -167,7 +169,7 @@ class OrchestrationService:
         return SearchRunRead.model_validate(run)
 
     def chat(self, actor: User, investigation_id: int, data: ChatSearchCreate) -> ChatSearchRead:
-        self.investigations.get_model(actor, investigation_id, minimum_role=ProjectMemberRole.EDITOR)
+        investigation = self.investigations.get_model(actor, investigation_id, minimum_role=ProjectMemberRole.EDITOR)
         previous_targets = None
         if data.parent_run_id is not None:
             parent = self.repository.get_by_id(data.parent_run_id)
@@ -186,6 +188,47 @@ class OrchestrationService:
                 analysis_type=decision["analysis_type"], decisions=decision["decisions"],
                 needs_clarification=True,
             )
+        active = decision.get("active_requested", False)
+        if active:
+            require_active_actor(actor, self.investigations.users)
+            if any(target["type"] not in {"domain", "hostname"} for target in decision["targets"]):
+                return ChatSearchRead(
+                    message="La verificación activa disponible admite dominios o hostnames explícitos. "
+                    "Indica el host autorizado; no convertiré otros objetivos automáticamente.",
+                    analysis_type=decision["analysis_type"], decisions=decision["decisions"],
+                    needs_clarification=True,
+                )
+            targets = [{"type": target["type"], "value": normalize_target(target["type"], target["value"])}
+                       for target in decision["targets"]]
+            if len(targets) > min(12, settings.orchestrator_max_tools):
+                raise BadRequestException("Reduce el número de hosts para verificar todo el alcance autorizado.")
+            allowed, reason = active_target_scope_status(
+                investigation, targets,
+                data.active_scope_note or "Verificación TLS/HTTP TCP/443: " + ", ".join(t["value"] for t in targets),
+            )
+            if not allowed:
+                return ChatSearchRead(
+                    message=f"No iniciaré acciones activas: {reason} Configura un caso pentest "
+                    "con autorización, hosts exactos y ventana vigente.",
+                    analysis_type=decision["analysis_type"], decisions=decision["decisions"],
+                    needs_clarification=True,
+                )
+            if not SandboxTlsHttpBaselineCollector().availability()[0]:
+                return ChatSearchRead(
+                    message="La verificación activa no está disponible: el sandbox está desactivado "
+                    "o mal configurado. No presentaré una consulta pasiva como verificación activa.",
+                    analysis_type=decision["analysis_type"], decisions=decision["decisions"],
+                    needs_clarification=True,
+                )
+            if not data.active_authorization_confirmed or not (data.active_scope_note or "").strip():
+                return ChatSearchRead(
+                    message="Confirma esta ejecución activa: una negociación TLS y una petición HEAD "
+                    "por host en TCP/443. Requiere un caso pentest autorizado y vigente, sin cambios "
+                    "en sistemas ni seguimiento de nuevos objetivos.",
+                    analysis_type=decision["analysis_type"], decisions=decision["decisions"],
+                    needs_clarification=True, requires_active_authorization=True,
+                    active_targets=[target["value"] for target in targets],
+                )
         if any(run.status in {"queued", "running"} and (run.policy or {}).get("chat")
                for run in self.repository.list_by_investigation(investigation_id)):
             raise BadRequestException("Ya hay un análisis del chat en curso en este caso. Espera su resultado.")
@@ -193,12 +236,15 @@ class OrchestrationService:
         run = self.create(actor, investigation_id, SearchRunCreate(
             objective=prompt if len(prompt) >= 5 else f"Investigar {prompt}", targets=decision["targets"],
             max_tools=min(12, settings.orchestrator_max_tools),
-            authorization_confirmed=True, allow_active=False, follow_discoveries=False,
+            profile="footprint" if active else "auto",
+            authorization_confirmed=True, allow_active=active, follow_discoveries=False,
+            scope_note=data.active_scope_note if active else None,
         ), chat_context={
             "prompt": prompt,
             "analysis_type": decision["analysis_type"], "message": decision["message"],
             "decisions": decision["decisions"], "parent_run_id": data.parent_run_id,
             "intent_method": "bounded-explicit-target-rules-v1",
+            "active_authorization_confirmed": bool(active and data.active_authorization_confirmed),
         })
         return ChatSearchRead(message=decision["message"], analysis_type=decision["analysis_type"],
                               decisions=decision["decisions"], needs_clarification=False, run=run)
