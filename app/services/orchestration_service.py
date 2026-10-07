@@ -6,6 +6,7 @@ from app.core.settings import settings
 from app.models.job import SearchRun
 from app.models.user import User
 from app.osint.targets import infer_targets, normalize_target
+from app.osint.chat_intent import interpret_chat
 from app.repositories.job_repository import (
     SearchDiscoveryRepository,
     SearchRunRepository,
@@ -17,6 +18,8 @@ from app.schemas.orchestration import (
     SearchRunCreate,
     SearchRunRead,
     SearchRunStatus,
+    ChatSearchCreate,
+    ChatSearchRead,
 )
 from app.schemas.project import ProjectMemberRole
 from app.services.audit_service import AuditService
@@ -44,6 +47,8 @@ class OrchestrationService:
         actor: User,
         investigation_id: int,
         data: SearchRunCreate,
+        *,
+        chat_context: dict | None = None,
     ) -> SearchRunRead:
         investigation = self.investigations.get_model(
             actor,
@@ -98,6 +103,7 @@ class OrchestrationService:
                 discovery_max_depth=data.discovery_max_depth,
                 discovery_max_events=data.discovery_max_events,
                 policy={
+                    **({"chat": chat_context} if chat_context else {}),
                     "authorization_confirmed": True,
                     "scope_note": data.scope_note,
                     "allow_active": data.allow_active,
@@ -159,6 +165,43 @@ class OrchestrationService:
             ) from exc
 
         return SearchRunRead.model_validate(run)
+
+    def chat(self, actor: User, investigation_id: int, data: ChatSearchCreate) -> ChatSearchRead:
+        self.investigations.get_model(actor, investigation_id, minimum_role=ProjectMemberRole.EDITOR)
+        previous_targets = None
+        if data.parent_run_id is not None:
+            parent = self.repository.get_by_id(data.parent_run_id)
+            if parent is None or parent.investigation_id != investigation_id:
+                raise NotFoundException("Conversation context")
+            # The context must belong to the same authorized case, not another project.
+            previous_targets = parent.targets
+        decision = interpret_chat(data.prompt, previous_targets)
+        if decision["needs_clarification"]:
+            return ChatSearchRead(**{k: decision[k] for k in (
+                "message", "analysis_type", "decisions", "needs_clarification"
+            )})
+        if not data.authorization_confirmed:
+            return ChatSearchRead(
+                message="Antes de consultar fuentes externas, confirma que puedes investigar estos objetivos.",
+                analysis_type=decision["analysis_type"], decisions=decision["decisions"],
+                needs_clarification=True,
+            )
+        if any(run.status in {"queued", "running"} and (run.policy or {}).get("chat")
+               for run in self.repository.list_by_investigation(investigation_id)):
+            raise BadRequestException("Ya hay un análisis del chat en curso en este caso. Espera su resultado.")
+        prompt = " ".join(data.prompt.split())
+        run = self.create(actor, investigation_id, SearchRunCreate(
+            objective=prompt if len(prompt) >= 5 else f"Investigar {prompt}", targets=decision["targets"],
+            max_tools=min(12, settings.orchestrator_max_tools),
+            authorization_confirmed=True, allow_active=False, follow_discoveries=False,
+        ), chat_context={
+            "prompt": prompt,
+            "analysis_type": decision["analysis_type"], "message": decision["message"],
+            "decisions": decision["decisions"], "parent_run_id": data.parent_run_id,
+            "intent_method": "bounded-explicit-target-rules-v1",
+        })
+        return ChatSearchRead(message=decision["message"], analysis_type=decision["analysis_type"],
+                              decisions=decision["decisions"], needs_clarification=False, run=run)
 
     def get(self, actor: User, run_id: int) -> SearchRunRead:
         run = self.repository.get_by_id(run_id)

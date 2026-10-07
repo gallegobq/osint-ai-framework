@@ -14,12 +14,24 @@ from app.schemas.orchestration import (
     SearchDiscoveryGraphRead,
     SearchRunCreate,
     SearchRunRead,
+    ChatSearchCreate,
+    ChatSearchRead,
 )
 from app.services.orchestration_service import OrchestrationService
 from app.services.authorization_service import AuthorizationService
 
 
 router = APIRouter(tags=["OSINT Orchestration"])
+
+
+@router.post("/investigations/{investigation_id}/chat", response_model=ChatSearchRead)
+def chat_search(
+    investigation_id: int,
+    data: ChatSearchCreate,
+    current_user: Annotated[User, Depends(require_permission(Permissions.Collection.EXECUTE))],
+    service: Annotated[OrchestrationService, Depends(get_orchestration_service)],
+) -> ChatSearchRead:
+    return service.chat(current_user, investigation_id, data)
 
 
 @router.get("/search-profiles", response_model=list[ScanProfileRead])

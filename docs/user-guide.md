@@ -54,12 +54,26 @@ datos. La política de la instancia puede hacer obligatorios los dos primeros.
 Una investigación puede definir una fecha de retención y `legal_hold` mediante
 la API de gobierno.
 
-En el estado actual, los tres modos ejecutan colectores pasivos. Pentesting ya
-aplica las reglas de autorización, pero todavía no incluye escáneres activos.
+El chat siempre ejecuta consultas pasivas. La línea base activa TLS/HTTP sólo
+está disponible mediante opciones avanzadas en un pentest autorizado, con
+alcance y ventana vigentes; nunca se activa por una instrucción del chat.
 
 ## 4. Lanzar una búsqueda
 
-Dentro de la investigación, pulsa **Búsqueda OSINT**.
+Dentro de la investigación usa **Chat con Linterna**: escribe, por ejemplo,
+«Investiga la infraestructura pública de example.com». No necesitas elegir
+tipo de blanco, perfil ni módulos. Sólo confirma que puedes consultar fuentes
+externas para los objetivos que indiques. La confirmación se recuerda durante
+la sesión de ese caso.
+
+Linterna muestra el tipo de análisis, sus decisiones, las fuentes elegidas y
+el progreso sin que tengas que actualizar manualmente. Si falta un objetivo,
+pregunta antes de consultar. Al terminar puedes escribir «ahora revisa su
+reputación» para conservar los blancos anteriores, o indicar un objetivo nuevo.
+Los estados parciales y los fallos se muestran expresamente; las evidencias
+están en el mismo caso y las conclusiones requieren revisión humana.
+
+Para controles manuales o una vigilancia, abre **Opciones avanzadas**:
 
 1. Escribe qué quieres confirmar en **Objetivo**.
 2. Para la primera prueba, selecciona un **Objetivo explícito** y escribe su

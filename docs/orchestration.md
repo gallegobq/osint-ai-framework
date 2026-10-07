@@ -30,7 +30,36 @@ predeterminada usa un plan seguro y determinista con herramientas compatibles.
 Configura `ORCHESTRATOR_REQUIRE_OLLAMA=true` si prefieres fallar en lugar de
 usar ese fallback.
 
-## Crear una búsqueda
+## Chat que decide el análisis
+
+En cada investigación, **Chat con Linterna** es la entrada sin selectores.
+El usuario escribe un pedido y el servidor identifica observables explícitos
+o un tema público, explica el tipo de análisis y deja que el planificador local
+elija fuentes compatibles. La clasificación inicial usa reglas acotadas
+versionadas; no se presenta como razonamiento del modelo. Ollama selecciona
+fuentes, con respaldo determinista declarado cuando no devuelve un plan válido.
+La interfaz muestra automáticamente el plan, sus motivos y el estado real,
+incluidos fallos y resultados parciales. Las ejecuciones conservan los mensajes
+y decisiones en la política auditable del caso, sin una nueva base de datos.
+
+`POST /api/v1/investigations/{id}/chat` acepta `prompt`,
+`authorization_confirmed` y, para continuar, `parent_run_id`. No acepta perfiles,
+módulos, límites ni permisos activos. Sólo crea consultas pasivas, hasta 12
+fuentes o el tope del operador si es menor, sin ampliar objetivos descubiertos.
+Si falta un objetivo o consentimiento para consultar fuentes externas, responde
+una pregunta y no encola nada. El contexto sólo se lee después de comprobar
+acceso de editor al caso y nunca se permite usar una búsqueda de otro caso.
+Un mensaje como «ahora revisa su reputación» conserva los blancos anteriores;
+un dominio explícito nuevo los sustituye. Las conclusiones aún requieren
+revisión humana y la evidencia se consulta en el mismo caso.
+
+La única confirmación del flujo básico es la autorización para consultar
+fuentes externas. Se recuerda en memoria durante la sesión de ese caso, no
+como permiso global permanente. La búsqueda tradicional permanece disponible
+en **Opciones avanzadas**. El chat requiere que exista un proyecto y un caso;
+no crea ni cambia automáticamente sus permisos o reglas de engagement.
+
+## Búsqueda avanzada
 
 ```http
 POST /api/v1/investigations/42/search-runs

@@ -65,6 +65,7 @@ def test_lifecycle_routes_are_registered() -> None:
     )
     assert "/api/v1/investigations/{investigation_id}/analysis-jobs" in paths
     assert "/api/v1/investigations/{investigation_id}/search-runs" in paths
+    assert "/api/v1/investigations/{investigation_id}/chat" in paths
     assert "/api/v1/search-profiles" in paths
     assert "/api/v1/collectors/benchmark" in paths
     assert "/api/v1/search-runs/{run_id}" in paths

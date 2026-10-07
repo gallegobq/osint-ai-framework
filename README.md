@@ -14,6 +14,8 @@ intercambiables.
 - Evidencia con procedencia visible, SHA-256, firma HMAC, deduplicación y timestamps.
 - Entidades y relaciones citables a evidencia.
 - Recolección asíncrona mediante colectores desacoplados.
+- Chat por investigación: basta un pedido, con tipo de análisis, fuentes y
+  decisiones explicadas, contexto de seguimiento y estados reales actualizados.
 - Catálogo de 91 módulos: 90 colectores pasivos para dominio, hostname, IP,
   ASN, URL, email, hash, CVE, usuarios y palabras clave —85 sin claves y 5 con
   credenciales— más una validación activa aislada.

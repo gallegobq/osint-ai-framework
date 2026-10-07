@@ -93,6 +93,22 @@ class SearchRunRead(BaseModel):
     created_at: datetime
 
 
+class ChatSearchCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: str = Field(min_length=1, max_length=2000)
+    parent_run_id: int | None = Field(default=None, ge=1)
+    authorization_confirmed: bool = False
+
+
+class ChatSearchRead(BaseModel):
+    message: str
+    analysis_type: str
+    decisions: list[str]
+    needs_clarification: bool
+    run: SearchRunRead | None = None
+
+
 class ScanProfileRead(BaseModel):
     name: ScanProfile
     label: str

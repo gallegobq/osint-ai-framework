@@ -8,6 +8,9 @@ const state = {
   currentProject: null,
   currentInvestigation: null,
   view: "dashboard",
+  chatConsent: new Set(),
+  chatNotes: new Map(),
+  chatTimer: null,
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -70,6 +73,9 @@ function setTokens(tokens) {
 }
 
 function clearSession() {
+  clearTimeout(state.chatTimer);
+  state.chatConsent.clear();
+  state.chatNotes.clear();
   state.accessToken = null;
   state.user = null;
   state.projects = [];
@@ -134,6 +140,7 @@ function setHeader(title, breadcrumb = "Espacio de trabajo /") {
 }
 
 function setActiveNav(view) {
+  clearTimeout(state.chatTimer);
   state.view = view;
   $$(".nav-item[data-view]").forEach((item) => item.classList.toggle("active", item.dataset.view === view));
 }
@@ -295,13 +302,60 @@ async function renderInvestigation(investigationId) {
   ]);
   const latestRuns = [...runs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   content.innerHTML = `<button class="back-button" data-action="open-project" data-id="${investigation.project_id}" type="button">← Volver a ${escapeHtml(project?.name || "proyecto")}</button>
-    <section class="page-head investigation-head"><div><div class="tag-row"><span class="badge ${investigation.status}">${label(investigation.status)}</span><span class="badge ${investigation.priority}">${label(investigation.priority)}</span><span class="badge">${label(investigation.kind)}</span><span class="badge">${label(investigation.operation_mode)}</span></div><h2>${escapeHtml(investigation.title)}</h2><p class="muted">${escapeHtml(investigation.description || "Sin descripción de caso.")}</p></div><div class="page-actions"><button class="button button-quiet" data-action="download-report" data-id="${investigation.id}" type="button">Reporte</button><button class="button button-dark" data-action="new-search" data-id="${investigation.id}" type="button">Buscar fuentes <span>◎</span></button></div></section>
+    <section class="page-head investigation-head"><div><div class="tag-row"><span class="badge ${investigation.status}">${label(investigation.status)}</span><span class="badge ${investigation.priority}">${label(investigation.priority)}</span><span class="badge">${label(investigation.kind)}</span><span class="badge">${label(investigation.operation_mode)}</span></div><h2>${escapeHtml(investigation.title)}</h2><p class="muted">${escapeHtml(investigation.description || "Sin descripción de caso.")}</p></div><div class="page-actions"><button class="button button-quiet" data-action="download-report" data-id="${investigation.id}" type="button">Reporte</button><button class="button button-dark" data-action="focus-chat" type="button">Hablar con Linterna <span>◎</span></button></div></section>
     ${operationBanner(investigation)}
+    ${chatPanel(investigation.id, latestRuns)}
     <section class="stats compact-stats" aria-label="Resumen del caso"><article><span>Evidencias</span><strong>${evidence.length}</strong><small>registros trazables</small></article><article><span>Hallazgos</span><strong>${findings.length}</strong><small>${findings.filter((item) => !["resolved","false_positive"].includes(item.status)).length} abiertos</small></article><article><span>Vigilancias</span><strong>${schedules.filter((item) => item.enabled).length}</strong><small>${runs.length} búsquedas ejecutadas</small></article></section>
     ${relationshipMap(entities, relations, evidence)}
     <div class="workbench"><div class="stack-column"><section class="surface"><div class="surface-head"><div><h3>Hallazgos SOC</h3><p>Severidad, estado, confianza y remediación</p></div><button class="back-button" data-action="new-finding" data-id="${investigation.id}" type="button">＋ Crear</button></div><div class="surface-body">${findings.length ? findings.map(findingItem).join("") : `<div class="inline-empty">Aún no hay hallazgos clasificados.</div>`}</div></section><section class="surface"><div class="surface-head"><div><h3>Evidencia</h3><p>Registros conservados con procedencia y huella digital</p></div><button class="back-button" data-action="new-evidence" data-id="${investigation.id}" type="button">＋ Añadir</button></div><div class="surface-body">${evidence.length ? evidence.map(evidenceItem).join("") : `<div class="inline-empty">No hay evidencia registrada todavía.<br />Añade una nota manual o inicia una búsqueda.</div>`}</div></section></div>
       <aside><section class="surface"><div class="surface-head"><div><h3>Acciones</h3><p>Herramientas del caso</p></div></div><div class="surface-body action-menu"><button class="action-card" data-action="new-search" data-id="${investigation.id}" type="button"><span>◎</span><span><strong>Búsqueda OSINT</strong><small>Ejecución única o programada</small></span><span>→</span></button><button class="action-card" data-action="new-finding" data-id="${investigation.id}" type="button"><span>!</span><span><strong>Hallazgo SOC</strong><small>Clasifica severidad y estado</small></span><span>→</span></button><button class="action-card" data-action="download-report" data-id="${investigation.id}" type="button"><span>↓</span><span><strong>Reporte narrativo</strong><small>Inglés claro, formato Markdown</small></span><span>→</span></button><button class="action-card" data-action="download-stix" data-id="${investigation.id}" type="button"><span>⇄</span><span><strong>STIX 2.1</strong><small>MISP y OpenCTI</small></span><span>↓</span></button><button class="action-card" data-action="download-siem" data-id="${investigation.id}" type="button"><span>≡</span><span><strong>SIEM NDJSON</strong><small>Ingesta de eventos</small></span><span>↓</span></button></div></section>
       <section class="surface runs-surface"><div class="surface-head"><div><h3>Búsquedas recientes</h3><p>Estado del orquestador</p></div><button class="back-button" data-action="refresh-investigation" data-id="${investigation.id}" type="button" aria-label="Actualizar">↻</button></div><div class="surface-body">${latestRuns.length ? `<div class="run-list">${latestRuns.slice(0,5).map(runItem).join("")}</div>` : `<div class="inline-empty">Sin búsquedas todavía.</div>`}</div></section></aside></div>`;
+  await pollChat(investigation.id, runs);
+}
+
+function chatTranscript(runs) {
+  return [...runs].filter((run) => run.policy?.chat).sort((a,b) => a.id - b.id).slice(-20).map((run) => {
+    const chat = run.policy.chat;
+    const result = run.result_summary;
+    const steps = run.plan?.steps || [];
+    const sources = steps.length ? `<details><summary>${steps.length} fuentes elegidas y sus motivos</summary><ul>${steps.map((step) => `<li><strong>${escapeHtml(step.collector)}</strong>: ${escapeHtml(step.reason)}</li>`).join("")}</ul></details>` : "";
+    const status = run.status === "queued" ? "Estoy esperando turno para elegir las fuentes."
+      : run.status === "running" ? (steps.length ? "Estoy consultando las fuentes elegidas y conservando la evidencia." : "Estoy preparando un plan local y comprobando sus límites.")
+      : run.status === "failed" ? "No pude completar la búsqueda. No interpretaré este fallo como ausencia de información."
+      : `${run.status === "partial" ? "La consulta fue parcial: algunas fuentes fallaron." : "Terminé las consultas."} ${result?.succeeded_tools || 0} fuentes completadas; ${result?.failed_tools || 0} fallidas; ${result?.evidence_ids?.length || 0} evidencias guardadas. Revisa la evidencia del caso antes de concluir.`;
+    return `<article class="chat-turn"><p class="chat-user"><strong>Tú</strong>${escapeHtml(chat.prompt || run.objective)}</p><div class="chat-assistant"><strong>Linterna · ${escapeHtml(chat.analysis_type)}</strong><p>${escapeHtml(chat.message)}</p><ul>${(chat.decisions || []).map((decision) => `<li>${escapeHtml(decision)}</li>`).join("")}</ul>${sources}<p class="chat-status">${escapeHtml(status)}</p><small>Búsqueda #${run.id} · ${escapeHtml(label(run.status))}${run.planner === "deterministic-fallback" ? " · Selección de respaldo: el modelo no proporcionó un plan válido." : ""}</small></div></article>`;
+  }).join("") || `<p class="muted">Escribe, por ejemplo: «Investiga la infraestructura de example.com» o «Revisa CVE-2021-44228». Yo elegiré el tipo de análisis y las fuentes.</p>`;
+}
+
+function chatPanel(investigationId, runs) {
+  const authorized = state.chatConsent.has(investigationId);
+  return `<section class="surface chat-surface" aria-labelledby="chat-title"><div class="surface-head"><div><h3 id="chat-title">Chat con Linterna</h3><p>Describe tu objetivo. Sin elegir módulos, blancos ni perfiles.</p></div><button class="back-button" data-action="new-search" data-id="${investigationId}" type="button">Opciones avanzadas</button></div><div class="surface-body"><div id="chat-transcript" class="chat-transcript" role="log" aria-live="polite">${chatTranscript(runs)}</div><div id="chat-notes" role="status">${escapeHtml(state.chatNotes.get(investigationId) || "")}</div><form id="chat-form" data-investigation-id="${investigationId}"><label for="chat-prompt">¿Qué quieres investigar?</label><textarea id="chat-prompt" rows="3" minlength="1" maxlength="2000" required placeholder="Escribe tu pedido; después puedes decir «ahora revisa su reputación»"></textarea><label class="check-label" ${authorized ? "hidden" : ""}><input id="chat-authorization" type="checkbox" ${authorized ? "checked" : ""} required /><span>Confirmo que puedo investigar los objetivos que indique en este chat y consultar fuentes externas. Sólo análisis pasivo.</span></label><p id="chat-error" class="form-error" role="alert" hidden></p><button class="button button-primary" type="submit">Enviar a Linterna →</button></form></div></section>`;
+}
+
+async function pollChat(investigationId, runs) {
+  const chatRuns = runs.filter((run) => run.policy?.chat);
+  const active = chatRuns.some((run) => ["queued", "running"].includes(run.status));
+  const form = $("#chat-form");
+  if (!form || Number(form.dataset.investigationId) !== Number(investigationId)) return;
+  form.dataset.parentRunId = chatRuns.length ? Math.max(...chatRuns.map((run) => run.id)) : "";
+  $("button[type=submit]", form).disabled = active;
+  if (!active) return;
+  state.chatTimer = setTimeout(async () => {
+    if (!state.accessToken || !$("#chat-form") || state.currentInvestigation?.id !== investigationId) return;
+    try {
+      const updated = await api(`/investigations/${investigationId}/search-runs`);
+      if (!$("#chat-form") || Number($("#chat-form").dataset.investigationId) !== investigationId) return;
+      const transcript = $("#chat-transcript");
+      const html = chatTranscript(updated);
+      if (transcript.innerHTML !== html) { transcript.innerHTML = html; transcript.scrollTop = transcript.scrollHeight; }
+      $("#chat-error").hidden = true;
+      await pollChat(investigationId, updated);
+    } catch (_) {
+      if (!$("#chat-form") || Number($("#chat-form").dataset.investigationId) !== investigationId) return;
+      $("#chat-error").textContent = "No pude actualizar el estado. La búsqueda continúa en el servidor; vuelve a abrir el caso para reconectar.";
+      $("#chat-error").hidden = false;
+    }
+  }, 4000);
 }
 
 function relationItem(relation, entityById, evidenceIds) {
@@ -511,6 +565,46 @@ $$(`[data-close-dialog]`).forEach((button) => button.addEventListener("click", (
 $$(`dialog`).forEach((dialog) => dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); }));
 $$(`.nav-item[data-view]`).forEach((button) => button.addEventListener("click", () => navigate(button.dataset.view)));
 
+content.addEventListener("submit", async (event) => {
+  if (event.target.id !== "chat-form") return;
+  event.preventDefault();
+  const form = event.target;
+  const investigationId = Number(form.dataset.investigationId);
+  const prompt = $("#chat-prompt").value.trim();
+  if (!prompt) return;
+  const button = $("button[type=submit]", form);
+  button.disabled = true;
+  $("#chat-error").hidden = true;
+  try {
+    const confirmed = $("#chat-authorization").checked;
+    const reply = await api(`/investigations/${investigationId}/chat`, { method: "POST", body: JSON.stringify({ prompt, parent_run_id: Number(form.dataset.parentRunId) || null, authorization_confirmed: confirmed }) });
+    if (confirmed) state.chatConsent.add(investigationId);
+    if (!$("#chat-form") || Number($("#chat-form").dataset.investigationId) !== investigationId) return;
+    if (!reply.run) {
+      const note = `Tú: ${prompt}\nLinterna: ${reply.message}`;
+      state.chatNotes.set(investigationId, note);
+      $("#chat-notes").textContent = note;
+      button.disabled = false;
+      return;
+    }
+    state.chatNotes.delete(investigationId);
+    $("#chat-notes").textContent = "";
+    $("#chat-prompt").value = "";
+    $("#chat-authorization").closest("label").hidden = true;
+    const runs = await api(`/investigations/${investigationId}/search-runs`);
+    if (!$("#chat-form") || Number($("#chat-form").dataset.investigationId) !== investigationId) return;
+    $("#chat-transcript").innerHTML = chatTranscript(runs);
+    $("#chat-transcript").scrollTop = $("#chat-transcript").scrollHeight;
+    clearTimeout(state.chatTimer);
+    await pollChat(investigationId, runs);
+  } catch (error) {
+    if (!$("#chat-form") || Number($("#chat-form").dataset.investigationId) !== investigationId) return;
+    $("#chat-error").textContent = error.message;
+    $("#chat-error").hidden = false;
+    button.disabled = false;
+  }
+});
+
 content.addEventListener("keydown", (event) => {
   if ((event.key === "Enter" || event.key === " ") && event.target.matches("[data-action].clickable")) event.target.click();
 });
@@ -528,6 +622,7 @@ content.addEventListener("click", async (event) => {
     else if (action === "new-evidence") openNewEvidence(target.dataset.id);
     else if (action === "new-finding") openNewFinding(target.dataset.id);
     else if (action === "new-search") openNewSearch(target.dataset.id);
+    else if (action === "focus-chat") $("#chat-prompt")?.focus();
     else if (action === "open-finding-activity") await openFindingActivity(target.dataset.investigationId, target.dataset.id);
     else if (action === "focus-evidence") focusEvidence(target.dataset.id);
     else if (action === "verify-evidence") {
